@@ -12,7 +12,8 @@
 
 #include "p5glove.h"
 
-#define WORLD_SIZE 1200 //500
+#define WORLD_SIZE 5.0
+#define WORLD_SCALE 5.0
 
 void render_init(void)
 {
@@ -32,7 +33,7 @@ void render_init(void)
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
 	glEnable(GL_NORMALIZE);
-	//glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST);
 }
 
 void  render_reshape(int w,int h)
@@ -45,8 +46,8 @@ void  render_reshape(int w,int h)
 	glViewport(0, 0, (GLsizei) w, (GLsizei) h);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	gluPerspective(70, (GLfloat) w/ (GLfloat) h, 0.01 , 1000.0);
-//	glOrtho(-WORLD_SIZE,WORLD_SIZE,WORLD_SIZE,-WORLD_SIZE,0.01,1000.0);
+	gluPerspective(60, (GLfloat) w/ (GLfloat) h, WORLD_SIZE*0.1 , WORLD_SIZE*2);
+//	glOrtho(-WORLD_SIZE,WORLD_SIZE,WORLD_SIZE,-WORLD_SIZE,0.0,WORLD_SIZE);
 
 	/* Restore old matrix mode */
 	glMatrixMode(oldmat);
@@ -106,9 +107,8 @@ void render_obj_world(void)
 	 glTranslatef(0.0,0.0,0.0);
 	 gluQuadricDrawStyle(obj,GLU_SMOOTH);
 	 gluQuadricOrientation(obj,GLU_INSIDE);
-//	 gluSphere(obj,WORLD_SIZE,10,10);
 
-//	 glutSolidCube(WORLD_SIZE/5.0);
+	 gluSphere(obj,WORLD_SIZE,10,10);
 	 glPopMatrix();
 
 	 gluDeleteQuadric(obj);
@@ -120,69 +120,30 @@ static struct p5glove_data info;
 static GLfloat ambient_ir[4]={0.0, 0.2, 0.2, 1.0};
 static GLfloat diffuse_ir[4]={0.0, 0.8, 0.8, 1.0};
 
-void render_obj_ir(void)
+void render_obj_hand(void)
 {
 	int i,j;
 	GLUquadricObj *obj;
 	int mode=GL_FRONT;
-	double plane[4];
 
 	glMaterialfv(mode,GL_AMBIENT,ambient_ir);
 
-	for (i=0; i < 8; i++) {
+	diffuse_ir[0]=1.0;
+	diffuse_ir[1]=0.0;
+	diffuse_ir[2]=1.0;
 
-		if (!info.ir[i].visible)
-			continue;
+	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
 
-		diffuse_ir[0]=1.0*(i&1);
-		diffuse_ir[1]=1.0*((i>>1)&1);
-		diffuse_ir[2]=1.0*((i>>2)&1);
+	obj=gluNewQuadric();
 
-		glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+	glPushMatrix();
+	glTranslatef(info.position[0]*WORLD_SCALE,info.position[1]*WORLD_SCALE,info.position[2]*WORLD_SCALE);
+	gluQuadricDrawStyle(obj,GLU_SMOOTH);
+ 	gluQuadricOrientation(obj,GLU_OUTSIDE);
+	gluSphere(obj,0.1,10,10);
+	glPopMatrix();
 
-		obj=gluNewQuadric();
-
-		glPushMatrix();
-		glTranslatef(info.ir[i].x,info.ir[i].y,info.ir[i].z);
-		gluQuadricDrawStyle(obj,GLU_SMOOTH);
-	 	gluQuadricOrientation(obj,GLU_OUTSIDE);
-		gluSphere(obj,20,10,10);
-		glPopMatrix();
-
-		gluDeleteQuadric(obj);
-	}
-
-	/* Compute the normal to the pointset
-	 */
-	p5normal(&info,plane);
-
-	for (i=0; i < 8; i++) {
-		GLdouble p1[3],p2[3];
-
-		if (!info.ir[i].visible)
-			continue;
-
-		p1[0]=info.ir[i].x;
-		p1[1]=info.ir[i].y;
-		p1[2]=info.ir[i].z;
-
-		for (j=i+1; j < 8; j++) {
-			if (!info.ir[j].visible)
-				continue;
-
-			p2[0]=info.ir[j].x;
-			p2[1]=info.ir[j].y;
-			p2[2]=info.ir[j].z;
-
-			render_cylinder(4,p1,p2);
-		}
-
-		for (j=0; j < 3; j++)
-			p2[j]=p1[j]+plane[j]*50;
-
-		render_cylinder(4,p1,p2);
-	}
-
+	gluDeleteQuadric(obj);
 }
 
 static double yaw=0.0,tilt=0.0;
@@ -194,7 +155,7 @@ void render_display(void)
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	gluLookAt(      0.0, 0.0, -WORLD_SIZE*.95, /* Eye */
-			0.0, 0.0, 100000.0, /* Horizon */
+			0.0, 0.0, 1.0, /* Horizon */
 			0.0, 1.0, 0.0);    /* Up */
 
 	glRotated(tilt,0.0, 0.1, 0.0);
@@ -204,7 +165,7 @@ void render_display(void)
 	render_obj_world();
 
 	/* Draw samples here */
-	render_obj_ir();
+	render_obj_hand();
 
 	glutSwapBuffers();
 }
@@ -219,12 +180,6 @@ void render_next(void)
 
 	if (err == 0) {
 		p5glove_process_sample(glove, &info); 
-
-		/* Point Z the other way */
-		int i;
-		for (i=0; i < 8; i++)
-			if (info.ir[i].visible)
-				info.ir[i].z *= -1.0;
 
 		glutPostRedisplay();
 	}
@@ -260,7 +215,7 @@ int main(int argc,char **argv)
 	glutInit(&argc,argv);
 
 	glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB|GLUT_DEPTH);
-	glutInitWindowSize(200,200);
+	glutInitWindowSize(600,600);
 	glutCreateWindow(argv[0]);
 
 	render_init();

@@ -57,10 +57,17 @@ typedef struct p5glove *P5Glove;
 struct p5glove_data {
 	int buttons;	/* Button bitmask */
 	int finger[5];	/* Finger clench values (0-63) */
+	/* Raw glove data */
 	struct p5glove_ir {
 		int visible;	/* Was the sensor visible? */
-		int x,y,z;
+		int v1,v2,h;
 	} ir[8];	/* IR Sensors values.  (-511 - 511) */
+
+	/* Computed from p5glove_process_sample 
+	 */
+	double position[3];	/* Position vector */
+	double normal[3];	/* Up vector (90 deg. to forward vector) */
+	double forward[3];	/* Forward vector */
 };
 
 

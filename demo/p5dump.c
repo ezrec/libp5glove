@@ -6,13 +6,41 @@
 
 #include <p5glove.h>
 
+static void dump_cooked(P5Glove glove,struct p5glove_data *info)
+{
+	printf("[%5.2f, %5.2f, %5.2f] ",
+		info->position[0],
+		info->position[1],
+		info->position[2]);
+
+	printf("(%5.2f, %5.2f, %5.2f) ",
+		info->normal[0],
+		info->normal[1],
+		info->normal[2]);
+}
+
+static void dump_raw(P5Glove glove,struct p5glove_data *info)
+{
+	int i;
+
+	/* Visible IRs */
+	for (i = 0; i < 8; i++) {
+		if (! info->ir[i].visible)
+			continue;
+
+		printf("%d:(%4d,%4d,%4d) ",i,
+				info->ir[i].h,info->ir[i].v1,info->ir[i].v2);
+	}
+
+}
+
 /* Brain-Dead P5 data dump.
  */
 int main(int argc, char **argv)
 {
 	P5Glove glove;
 	struct p5glove_data info;
-	int sample;
+	int sample,cooked=0;
 
 	glove=p5glove_open();
 	if (glove == NULL) {
@@ -20,21 +48,24 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if (argc>1 && !strcmp(argv[1],"-c"))
+		cooked=1;
+
 	printf("Dumping the next 100 samples...\n");
 	memset(&info,0,sizeof(info));
-	for (sample=0; sample < 100; ) {
+	for (sample=0; ; ) {
 		int i,err;
 
 		err=p5glove_sample(glove,&info);
 		if (err < 0 && errno == EAGAIN)
 			continue;
-
-		printf("%2d: ",sample);
-		sample++;
 		if (err < 0) {
 			perror("Glove Failure");
 			exit(1);
 		}
+
+		printf("%2d: ",sample);
+		sample++;
 
 		/* Buttons */
 		printf("%c%c%c ",
@@ -50,13 +81,11 @@ int main(int argc, char **argv)
 			info.finger[P5GLOVE_RING],
 			info.finger[P5GLOVE_PINKY]);
 
-		/* Visible IRs */
-		for (i = 0; i < 8; i++) {
-			if (! info.ir[i].visible)
-				continue;
-
-			printf("%d:(%4d,%4d,%4d) ",i,
-					info.ir[i].x,info.ir[i].y,info.ir[i].z);
+		if (cooked) {
+			p5glove_process_sample(glove,&info);
+			dump_cooked(glove,&info);
+		} else {
+			dump_raw(glove,&info);
 		}
 
 		printf("\n");
