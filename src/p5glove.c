@@ -119,6 +119,20 @@ static int32_t get_bits_signed(uint8_t *data,int pos,int len)
 	return value | mask;
 }
 
+/* Check a signed 10-bit number between -512 and 511 to see if it
+ * might have overflown.
+ * If it has overflowed, convert it to the range -615 to 615
+ *
+ * Code contributed by Carl Kenner <carl.kenner@gmail.com>
+ */
+static void fix_tan_overflow(int *value, int oldvalue)
+{
+	if (*value <= -409 && (oldvalue-*value) >= 670)
+		*value += 1024;
+	else if (*value >= 409 && (oldvalue-*value) <= -670)
+		*value -= 1024;
+}
+
 static void p5g_unpack_sample(struct p5glove *p5, uint8_t data[24])
 {
 	unsigned char tmp[24];
@@ -178,6 +192,13 @@ printf("Odd. Sample [0]=%d\n",data[0]);
 		p5->data.ir[axis].v1=get_bits_signed(data,60+(i*30)+10,10);
 		p5->data.ir[axis].h=get_bits_signed(data,60+(i*30)+20,10);
 		p5->data.ir[axis].visible=visible++;
+
+		/* The sensors generate values in (at least) the range
+		 * -615 to 615, overflowing the -512 to 512 range.
+		 */
+		fix_tan_overflow(&p5->data.ir[axis].v2,p5->prev.ir[axis].v2);
+		fix_tan_overflow(&p5->data.ir[axis].v1,p5->prev.ir[axis].v1);
+		fix_tan_overflow(&p5->data.ir[axis].h,p5->prev.ir[axis].h);
 	}
 }
 
