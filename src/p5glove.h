@@ -25,6 +25,11 @@
 #ifndef P5GLOVE_H
 #define P5GLOVE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 typedef struct p5glove *P5Glove;
 
 /* Button bitmasks */
@@ -75,5 +80,18 @@ void p5glove_close(P5Glove glove);
  * errno to EAGAIN is called faster then the refresh frequency.
  */
 int p5glove_sample(P5Glove glove, struct p5glove_data *data);
+
+
+void p5glove_begin_calibration(P5Glove glove);
+void p5glove_end_calibration(P5Glove glove);
+
+int p5glove_get_mouse_mode(P5Glove glove);
+void p5glove_mouse_mode_on(P5Glove glove);
+void p5glove_mouse_mode_off(P5Glove glove);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* P5GLOVE_H */

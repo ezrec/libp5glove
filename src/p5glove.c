@@ -284,3 +284,40 @@ int p5glove_sample(P5Glove p5, struct p5glove_data *info)
     
 	return err;
 }
+
+void p5glove_begin_calibration(P5Glove glove)
+{
+#ifdef __WIN32__
+
+#endif
+}
+
+void p5glove_end_calibration(P5Glove glove)
+{
+#ifdef __WIN32__
+
+#endif
+}
+
+
+int p5glove_get_mouse_mode(P5Glove glove)
+{
+#ifdef __WIN32__
+    return 0;
+#endif
+}
+
+void p5glove_mouse_mode_on(P5Glove glove)
+{
+#ifdef __WIN32__
+
+#endif
+}
+
+void p5glove_mouse_mode_off(P5Glove glove)
+{
+#ifdef __WIN32__
+    
+#endif
+}
+
