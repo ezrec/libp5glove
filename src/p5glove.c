@@ -126,11 +126,11 @@ static void p5g_unpack_sample(struct p5glove *p5, uint8_t data[24])
 
 	/* Decode data.
 	 * Format (nibbles from LSB to MSB)
-	 *                 11111111111111112222222222222222
+	 *		 11111111111111112222222222222222
 	 * 0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF
 	 * 01ddddddddBCCCCVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVxxx
 	 *  0 1 2 3 4 5 6 7 8 9 A B C D E F 0 1 2 3 4 5 6 7
-	 *                                  1 1 1 1 1 1 1 1
+	 *				  1 1 1 1 1 1 1 1
 	 *	  (bytes from LSB to MSB)
 	 *
 	 * d - Packed 6-bit bend sensor data (Index, Middle, Ring, Pinky, Thumb)
@@ -485,7 +485,7 @@ return p5g_delta(p5,1,1);
 	return p5g_delta(p5,1,1);
 }
 
-static int p5glove_parse_report6(struct p5glove *p5,int8_t *buff)
+static int p5g_parse_report6(struct p5glove *p5,int8_t *buff)
 {
 	/* We are given 32nds of a degree, so: */
 #define REPORT6_TO_RAD(x)	((x)/32.0*M_PI/180.0)
@@ -501,7 +501,7 @@ static int p5glove_parse_report6(struct p5glove *p5,int8_t *buff)
 	return 0;
 }
 
-static int p5glove_parse_report12(struct p5glove *p5,uint8_t *buff)
+static int p5g_parse_report12(struct p5glove *p5,uint8_t *buff)
 {
 	int led,axis;
 
@@ -545,16 +545,18 @@ static int p5glove_calibrate(struct p5glove *p5)
 	int err;
 
 	memset(&p5->cal,0,sizeof(p5->cal));
-	err=usb_get_feature(p5->usb,12,report12_buff,sizeof(report12_buff));
+	report12_buff[0]=12;
+	err=GetUSBHIDFeature(p5->usb,report12_buff,sizeof(report12_buff));
 	if (err < 0) goto end;
 
-	err=p5glove_parse_report12(p5,report12_buff);
+	err=p5g_parse_report12(p5,report12_buff);
 	if (err < 0) goto end;
 
-	err=usb_get_feature(p5->usb,6,report6_buff,sizeof(report6_buff));
+	report6_buff[0]=6;
+	err=GetUSBHIDFeature(p5->usb,report6_buff,sizeof(report6_buff));
 	if (err < 0) goto end;
 
-	err=p5glove_parse_report6(p5,report6_buff);
+	err=p5g_parse_report6(p5,report6_buff);
 
 #ifdef DEBUG_CALIB
 DPRINTF("Cal results:\n");
@@ -577,11 +579,11 @@ P5Glove p5glove_open(int glove_number)
 	int err;
        
 	usb = OpenUSBHID (
-            1,                                                  /* 1st matching device */
-            0x0d7f,                                             /* vendor id */
-            0x0100,                                             /* product id */
-            0,                                                  /* version number (not used) */
-            SELECT_VENDOR_ID_FLAG | SELECT_PRODUCT_ID_FLAG );   /* selection flags */
+	    glove_number,				  /* nth matching device */
+	    0x0d7f,					  /* vendor id */
+	    0x0100,					  /* product id */
+	    0,						  /* version number (not used) */
+	    SELECT_VENDOR_ID_FLAG | SELECT_PRODUCT_ID_FLAG );   /* selection flags */
 	if ( usb == INVALID_USBHID_VALUE )
 		return NULL;
 

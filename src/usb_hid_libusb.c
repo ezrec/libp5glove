@@ -23,6 +23,8 @@
 #include <errno.h>
 #include <usb.h>
 
+#include "config.h"
+
 #define USBHID_struct usb_dev_handle
 #include "usb_hid.h"
 
@@ -41,7 +43,7 @@ USBHID OpenUSBHID( int index, int vendorId, int productId, int versionNumber, in
 	struct usb_bus *bus;
 	struct usb_device *dev;
 	struct usb_dev_handle *usb = NULL;
-	int err,i=1;
+	int err,i=0;
 
 	usb_init();
 
@@ -53,8 +55,6 @@ USBHID OpenUSBHID( int index, int vendorId, int productId, int versionNumber, in
 			if (dev->descriptor.idVendor != vendorId ||
 			    dev->descriptor.idProduct != productId)
 				continue;
-
-			DPRINTF("Found P5 device %d at %s/%s\n",i,bus->dirname,dev->filename);
 
 			if (i < index)
 				continue;

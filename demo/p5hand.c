@@ -338,7 +338,7 @@ int main(int argc,char **argv)
 
 	render_init();
 
-	glove=p5glove_open(1);
+	glove=p5glove_open(0);
 	if (glove==NULL) {
 		perror(argv[0]);
 		exit(1);

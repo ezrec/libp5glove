@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 	P5Glove glove;
 	int sample;
 
-	glove=p5glove_open(1);
+	glove=p5glove_open(0);
 	if (glove == NULL) {
 		fprintf(stderr, "%s: Can't open glove interface\n", argv[0]);
 		return 1;
