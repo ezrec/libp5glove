@@ -1,16 +1,19 @@
 libp5glove TODO
-Last updated: 11 March, 2004.
+Last updated: 29 March, 2004.
 
 
 
 libp5 reorganisation:
 
-	- move matrix code from p5hand.c to p5glove.c (might want to be able to disable matrix so that p5dump.c can output raw data).
+	- move matrix code from p5hand.c to p5glove.c [DONE, added p5glove_process_sample() to p5glove.h]
+
+	- p5dump.c doesn't call p5glove_process_sample(), should probably add a flag (-r raw) and call p5glove_process_sample() by default.
+
 
 	- separate x-platform code into separate files from win / mac / linux usb i/o
  		- consider that at the moment the mac and pc implementations of p5glove_sample() block until data is available, whereas the linux version returns EAGAIN.
 		- tim thinks the glove is an interrupt device (is reading it that way from the mac) so perhaps this accounts for the shifting code on Linux.
- 	- tim to clean up osx usb i/o code
+ 	- tim to clean up osx usb i/o code [DONE, merged]
 	
 
 libp5 additions:

@@ -63,23 +63,33 @@ struct p5glove_data {
 	} ir[8];	/* IR Sensors values.  (-511 - 511) */
 };
 
+
 /* p5glove_open:
  * Open a handle to a P5 Glove. Returns NULL on error,
  * and sets errno appropriately.
  */
 P5Glove p5glove_open(void);
 
+
 /* p5glove_close:
  * Close an open handle to a P5 Glove.
  */
 void p5glove_close(P5Glove glove);
 
+
 /* p5glove_sample
  * Retrieve a sample from the P5
- * Returns 0 on succes, -1 on error, and sets 
+ * Returns 0 on success, -1 on error, and sets 
  * errno to EAGAIN is called faster then the refresh frequency.
  */
 int p5glove_sample(P5Glove glove, struct p5glove_data *data);
+
+
+/* p5glove_process_sample
+ * Clean up raw glove data returned by p5glove_sample
+ * Eliminates erroneous values, linearizes coordinates, etc.
+ */
+void p5glove_process_sample(P5Glove glove, struct p5glove_data *data);
 
 
 void p5glove_begin_calibration(P5Glove glove);

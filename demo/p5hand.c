@@ -210,66 +210,6 @@ void render_display(void)
 }
 
 
-// unwarping matrix for the P5 glove, version 2
-// Ross Bencina <rossb@audiomulch.com> 26th February, 2004
-//
-// this version is about as good as it gets without separately
-// modelling the Z axis distortion that the glove seems to 
-// introduce when merging signals from the two cameras.
-//
-// massage the coordinates into something relatively usable.
-// usage example: p5_matrix( &info.ir[i].x, &info.ir[i].y, &info.ir[i].z );
-void p5_matrix( int *x_, int *y_, int *z_ )
-{
-    // rotation coefficients
-    static const float st_yz = 0.6730125; // sin( M_PI * .235 );
-    static const float ct_yz = 0.739631; // cos( M_PI * .235 );
-    // unit cube scaler
-    static const float s = 1. / 512.;
-
-    float x = *x_;
-    float y = *y_;
-    float z = *z_;
-
-    // scale to unit cube
-    x *= s; y *= s; z *= s;
-
-    // rotate  y, z
-    {
-        float yy = y, zz = z;
-        y = yy * ct_yz + zz * st_yz;
-        z = zz * ct_yz - yy * st_yz;
-    }
-
-    y += 0.19;       // translate y
-    z += 3.312;     // translate z
-
-
-	// fisheye correction
-	float zfocal = z - 0.8;
-	if( zfocal > 0. )
-	    z *= zfocal / sqrt( y*y + zfocal*zfocal ); // alternate form of: cos( atan( y / zfocal) )
-	
-	// distance correct z
-	z = pow(fabs(z),8.4) * 0.0003385305;
-	
-	// perspective correct x
-	x *= (31.5 + pow(z,1.7)) * 0.063096;
-	
-	//perspective correct y
-	y *= (4.5 + z) * 0.239;
-	
-	// scale z
-	z *= 0.478;
-
- // x, y ~(-2.5, 2.5), z ~(0, 5)
- // remap x, y and z to +/-512
-    *x_ = x * 200.;
-    *y_ = y * 200.;
-    *z_ = (z * 200) - 512;
-}
-
-
 void render_next(void)
 {
 	int err;
@@ -278,13 +218,14 @@ void render_next(void)
 	err=p5glove_sample(glove, &info);
 
 	if (err == 0) {
+		p5glove_process_sample(glove, &info); 
+
 		/* Point Z the other way */
 		int i;
 		for (i=0; i < 8; i++)
-			if (info.ir[i].visible){
-				p5_matrix( &info.ir[i].x, &info.ir[i].y, &info.ir[i].z );
+			if (info.ir[i].visible)
 				info.ir[i].z *= -1.0;
-			}
+
 		glutPostRedisplay();
 	}
 }

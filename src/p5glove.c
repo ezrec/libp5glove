@@ -3,6 +3,7 @@
  *
  *  Copyright (c) 2003 Jason McMullan <ezrec@hotmail.com>
  *  Windows patch (c) 2004 Ross Bencina <rossb@audiomulch.com>
+ *  MacOSX patch (c) 2004 Tim Kreger
  *
  *  USB P5 Data Glove support
  */
@@ -22,22 +23,31 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
+ 
+#if !defined(__MACOSX__) && defined(__APPLE__) && defined(__MACH__)
+#define __MACOSX__	1
+#endif 
 
 #include <stdio.h>
 #include <stdlib.h> /* for calloc */
 #include <string.h> /* for memcpy */
-#ifdef __WIN32__
+#include <math.h>
+
+#if defined(__WIN32__)
 #include "win32_usb_hid.h"
+#elif defined(__MACOSX__)
+#include "macosx_usb_hid.h"
 #else
 #include <usb.h>
 #endif
+
 #include <errno.h>
 #include "p5glove.h"
 
 struct p5glove {
 	unsigned char data[24],later[24];
 	char name[128];
-#ifdef __WIN32__
+#if defined(__WIN32__) || defined(__MACOSX__)
     USBHIDHandle *usb;
 #else
 	struct usb_dev_handle *usb;
@@ -45,7 +55,7 @@ struct p5glove {
 #endif
 };
 
-static void process_sample(struct p5glove *p5, struct p5glove_data *info)
+static void unpack_sample(struct p5glove *p5, struct p5glove_data *info)
 {
 	unsigned char *data = p5->data, *later=p5->later;
 	unsigned char tmp[24];
@@ -66,7 +76,7 @@ static void process_sample(struct p5glove *p5, struct p5glove_data *info)
 	 * V - Packed 30 bit signed IR info (10 bits X, 10 bits Y, 10 bits Z), x4
 	 */
 
-#ifndef __WIN32__
+#if !defined(__WIN32__) && !defined(__MACOSX__)
 	if (data[16] == 1) {	/* Hmm. Offset by 16. Fix it. */
 		memcpy(tmp,later,24-16);
 		memcpy(later,data+16,24-16);
@@ -140,7 +150,74 @@ static void process_sample(struct p5glove *p5, struct p5glove_data *info)
 		info->ir[axis].y=SEX(value>>10);
 		info->ir[axis].z=SEX(value>>20);
 		info->ir[axis].visible=1;
-	}
+	}	
+}
+
+
+// unwarping matrix for the P5 glove, version 2
+// Ross Bencina <rossb@audiomulch.com> 26th February, 2004
+//
+// this version is about as good as it gets without separately
+// modelling the Z axis distortion that the glove seems to 
+// introduce when merging signals from the two cameras.
+//
+// massage the coordinates into something relatively usable.
+// usage example: p5_matrix( &info.ir[i].x, &info.ir[i].y, &info.ir[i].z );
+void p5_matrix( int *x_, int *y_, int *z_ )
+{
+    // rotation coefficients
+    static const float st_yz = 0.6730125; // sin( M_PI * .235 );
+    static const float ct_yz = 0.739631; // cos( M_PI * .235 );
+    // unit cube scaler
+    static const float s = 1. / 512.;
+
+    float zfocal;
+
+    float x = *x_;
+    float y = *y_;
+    float z = *z_;
+
+    // scale to unit cube
+    x *= s; y *= s; z *= s;
+
+    // rotate  y, z
+    {
+        float yy = y, zz = z;
+        y = yy * ct_yz + zz * st_yz;
+        z = zz * ct_yz - yy * st_yz;
+    }
+
+    y += 0.19;       // translate y
+    z += 3.312;     // translate z
+
+	// fisheye correction
+	zfocal = z - 0.8;
+	if( zfocal > 0. )
+	    z *= zfocal / sqrt( y*y + zfocal*zfocal ); // alternate form of: cos( atan( y / zfocal) )
+	
+	// distance correct z
+	z = pow(fabs(z),8.4) * 0.0003385305;
+	
+	// perspective correct x
+	x *= (31.5 + pow(z,1.7)) * 0.063096;
+	
+	//perspective correct y
+	y *= (4.5 + z) * 0.239;
+	
+	// scale z
+	z *= 0.478;
+
+ // x, y ~(-2.5, 2.5), z ~(0, 5)
+ // remap x, y and z to +/-512
+    *x_ = x * 200.;
+    *y_ = y * 200.;
+    *z_ = (z * 200) - 512;
+}
+
+
+void p5glove_process_sample(P5Glove glove, struct p5glove_data *info)
+{
+	int i;
 
 	/* Remove any spurious data */
 	for (i=0; i < 8; i++) {
@@ -171,11 +248,19 @@ static void process_sample(struct p5glove *p5, struct p5glove_data *info)
 		if (j == 8)
 			info->ir[i].visible=0;
 	}
+	
+
+	// unwarp LED coordinates
+	for (i=0; i < 8; i++) {
+		if( info->ir[i].visible )
+			p5_matrix( &info->ir[i].x, &info->ir[i].y, &info->ir[i].z );
+	}
 }
+
 
 P5Glove p5glove_open(void)
 {
-#ifdef __WIN32__
+#if defined(__WIN32__) || defined(__MACOSX__)
     struct p5glove *p5;
     USBHIDHandle *usb = OpenUSBHID (
             0,                                                  /* 0th matching device */
@@ -235,7 +320,7 @@ P5Glove p5glove_open(void)
 void p5glove_close(P5Glove p5)
 {
 	if (p5->usb != NULL)
-#if __WIN32__
+#if defined(__WIN32__) || defined(__MACOSX__)
         CloseUSBHID(p5->usb);
 #else
 		usb_close(p5->usb);
@@ -248,12 +333,13 @@ int p5glove_sample(P5Glove p5, struct p5glove_data *info)
 {
 	int err;
 	
-#ifdef __WIN32__
+#if defined(__WIN32__) || defined(__MACOSX__)
     if( ReadUSBHID( p5->usb, p5->data, 24 ) == 24 ){
-        process_sample(p5, info);
+        unpack_sample(p5, info);
         err = 0;
     }else{
-        err = EACCES;
+        errno = EACCES;
+        err = -1;
     }
 
 #else
@@ -272,7 +358,7 @@ int p5glove_sample(P5Glove p5, struct p5glove_data *info)
 	err=usb_bulk_read(p5->usb, 0x81, p5->data, 24, 2000);
 
 	if (err == 24) { 
-		process_sample(p5, info);
+		unpack_sample(p5, info);
 		err=0;
 	} else if (err < 0 && errno == 84)
 		err=0;
