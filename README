@@ -1,0 +1,18 @@
+The Essential Reality P5 Data Glove Library
+-------------------------------------------
+
+Copyright 2003, Jason McMullan <jmcmulla@linuxcare.com
+
+Introduction
+------------
+
+  The Essential Reality P5 Data Glove is a USB device that reports
+5 finger positions, and 8 X/Y/Z IR locations. 
+
+
+Library Features
+----------------
+
+  This library is a polling system. See demos/p5dump.c for a simple
+example usage.
+  
