@@ -65,9 +65,18 @@ struct p5glove_data {
 
 	/* Computed from p5glove_process_sample 
 	 */
-	double position[3];	/* Position vector */
-	double normal[3];	/* Up vector (90 deg. to forward vector) */
-	double forward[3];	/* Forward vector */
+	double position[3];	/* Position */
+	double ref_normal[3];	/* Position */
+	double normal[3];	/* Position */
+	double position_next[3];	/* Position */
+	double position_last[3];	/* Position */
+	int position_led[3];
+
+	/* Rotation information */
+	struct {
+		double axis[3];	/* Rotation axis (normalized) */
+		double angle;	/* In degrees */
+	} rotation;
 };
 
 
@@ -95,9 +104,15 @@ int p5glove_sample(P5Glove glove, struct p5glove_data *data);
 /* p5glove_process_sample
  * Clean up raw glove data returned by p5glove_sample
  * Eliminates erroneous values, linearizes coordinates, etc.
+ *
+ * Returns:
+ * 	 -ENOENT if no LED found
+ * 	 0	position (at least 1 led)
+ * 	 1	position & rotation (at least 3 leds)
  */
-void p5glove_process_sample(P5Glove glove, struct p5glove_data *data);
+int p5glove_process_sample(P5Glove glove, struct p5glove_data *data);
 
+int p5glove_reference_led(P5Glove glove,int led,double pos[3]);
 
 void p5glove_begin_calibration(P5Glove glove);
 void p5glove_end_calibration(P5Glove glove);
@@ -105,6 +120,104 @@ void p5glove_end_calibration(P5Glove glove);
 int p5glove_get_mouse_mode(P5Glove glove);
 void p5glove_mouse_mode_on(P5Glove glove);
 void p5glove_mouse_mode_off(P5Glove glove);
+
+/* Inline helpers */
+
+/* Distance between two points */
+static inline double p5glove_dist(const double a[3],const double b[3])
+{
+	double w = 0.0;
+	int i;
+
+	for (i = 0; i < 3; i++)
+		w += (a[i]-b[i])*(a[i]-b[i]);
+
+	return sqrt(w);
+}
+
+/* Cross product of two vectors */
+static inline void p5glove_cross(const double v1[3],const double v2[3],double res[3])
+{
+	res[0]=v1[1]*v2[2]-v1[2]*v2[1];
+	res[1]=v1[2]*v2[0]-v1[0]*v2[2];
+	res[2]=v1[0]*v2[1]-v1[1]*v2[0];
+}
+
+/* Optimized for our use. We know the last row and last column are all zeros,
+ * except for [3][3]=1.
+ */
+static inline void p5glove_vec_mat(const double vec[3],double mat[4][4],double res[3])
+{
+	int r,c;
+
+	for (r=0; r < 3; r++) for (c=0; c < 3; c++)
+		res[r] += vec[c]*mat[c][r];
+}
+
+static inline double p5glove_dot(const double a[3],const double b[3])
+{
+	double res = 0.0;
+	int i;
+
+	for (i=0;i < 3; i++)
+		res += a[i]*b[i];
+
+	return res;
+}
+
+/* This is safe to call with v==res
+ */
+static inline void p5glove_normalize(const double v[3],double res[3])
+{
+	double tmp=0.0;
+	int i;
+
+	for (i=0; i < 3; i++) {
+		tmp += v[i]*v[i];
+	}
+
+	tmp=sqrt(tmp);
+
+	for (i=0; i < 3; i++)
+		res[i] = v[i] / tmp;
+}
+
+/* Normal of three points */
+static inline void p5glove_normal(const double p1[3],const double p2[3],const double p3[3],double xyz[3])
+{
+	double v1[3],v2[3];
+
+	v1[0]=p1[0]-p2[0];
+	v1[1]=p1[1]-p2[1];
+	v1[2]=p1[2]-p2[2];
+
+	v2[0]=p3[0]-p2[0];
+	v2[1]=p3[1]-p2[1];
+	v2[2]=p3[2]-p2[2];
+
+	p5glove_cross(v1,v2,xyz);
+
+	p5glove_normalize(xyz,xyz);
+}
+
+/* Angle of three points */
+static inline double p5glove_angle(const double p1[3],const double p2[3],const double p3[3])
+{
+	double v1[3],v2[3];
+
+	v1[0]=p1[0]-p2[0];
+	v1[1]=p1[1]-p2[1];
+	v1[2]=p1[2]-p2[2];
+
+	v2[0]=p3[0]-p2[0];
+	v2[1]=p3[1]-p2[1];
+	v2[2]=p3[2]-p2[2];
+
+	p5glove_normalize(v1,v1);
+	p5glove_normalize(v2,v2);
+
+	return acos(p5glove_dot(v1,v2));
+}
 
 
 #ifdef __cplusplus

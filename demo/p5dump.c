@@ -8,15 +8,16 @@
 
 static void dump_cooked(P5Glove glove,struct p5glove_data *info)
 {
-	printf("[%5.2f, %5.2f, %5.2f] ",
+	printf("[%.4f, %.4f, %.4f] ",
 		info->position[0],
 		info->position[1],
 		info->position[2]);
 
-	printf("(%5.2f, %5.2f, %5.2f) ",
-		info->normal[0],
-		info->normal[1],
-		info->normal[2]);
+	printf("(%.4f, %.4f, %.4f, %.4f deg) ",
+		info->rotation.axis[0],
+		info->rotation.axis[1],
+		info->rotation.axis[2],
+		info->rotation.angle);
 }
 
 static void dump_raw(P5Glove glove,struct p5glove_data *info)

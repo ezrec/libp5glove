@@ -13,7 +13,15 @@
 #include "p5glove.h"
 
 #define WORLD_SIZE 5.0
-#define WORLD_SCALE 5.0
+#define WORLD_SCALE 10.0
+
+const GLdouble zero[4]={0.0,0.0,0.0,1.0};
+const GLdouble y_up[4]={0.0,1.0,0.0,1.0};
+const GLdouble y_down[4]={0.0,-1.0,0.0,1.0};
+const GLdouble x_left[4]={-1.0,0.0,0.0,1.0};
+const GLdouble x_right[4]={1.0,0.0,0.0,1.0};
+const GLdouble z_front[4]={0.0,0.0,-1.0,1.0};
+const GLdouble z_back[4]={0.0,0.0,1.0,1.0};
 
 void render_init(void)
 {
@@ -58,33 +66,57 @@ static GLfloat diffuse[4]={0.8, 0.8, 0.8, 1.0};
 static GLfloat specular[4]={0.0, 0.0, 0.0, 1.0};
 static GLfloat emission[4]={0.0, 0.0, 0.0, 1.0};
 
-void render_cylinder(GLdouble diameter,GLdouble *p1,GLdouble *p2)
+void render_label(GLdouble size, const char *string)
 {
-	GLdouble vx,vy,vz,dist,ax,rx,ry;
+	glPushMatrix();
+	glTranslated(+size/2,size,0);
+	glRotated(180,0.0,1.0,0.0);
+	glScaled(0.001,0.001,0.001);
+	while (*string)
+		glutStrokeCharacter(GLUT_STROKE_ROMAN,*(string++));
+	glPopMatrix();
+}
+
+void render_cylinder(GLdouble diameter,const GLdouble p1[3],const GLdouble p2[3],const char *label)
+{
+	GLdouble v[3],dist,ax,r[3];
 	GLUquadricObj *obj;
 
-	vx=p2[0]-p1[0];
-	vy=p2[1]-p1[1];
-	vz=p2[2]-p1[2];
+	v[0]=p2[0]-p1[0];
+	v[1]=p2[1]-p1[1];
+	v[2]=p2[2]-p1[2];
 
-	dist=sqrt(vx*vx+vy*vy+vz*vz);
+	dist=sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
+	if (dist == 0)
+		return;
 
-	ax=180.0/M_PI * acos(vz/dist);
-	if (vz < 0.0) ax = -ax;
+	v[0] /= dist;
+	v[1] /= dist;
+	v[2] /= dist;
 
-	rx=-vy*vz;
-	ry=vx*vz;
+	ax=180.0/M_PI * acos(p5glove_dot(z_front,v));
+
+	if (ax != 0.0) {
+		p5glove_normal(z_front,zero,v,r);
+
+	}
 
 	obj=gluNewQuadric();
+	gluQuadricDrawStyle(obj,GLU_SMOOTH);
+	gluQuadricOrientation(obj,GLU_OUTSIDE);
 
 	/* Fun fun. Draw a cylinder between two points.
 	 */
 	glPushMatrix();
+	glPushMatrix();
 	glTranslated(p1[0],p1[1],p1[2]);
-	glRotated(ax, rx, ry, 0.0);
-	gluQuadricDrawStyle(obj,GLU_SMOOTH);
-	gluQuadricOrientation(obj,GLU_OUTSIDE);
-	gluCylinder(obj,4,4,dist,10,1);
+	gluSphere(obj,diameter,10,10);
+	glRotated(ax, r[0], r[1], r[2]);
+	gluCylinder(obj,diameter,diameter,dist,10,1);
+	glPopMatrix();
+	glTranslated(p2[0],p2[1],p2[2]);
+	gluSphere(obj,diameter,10,10);
+	render_label(diameter,label);
 	glPopMatrix();
 
 	gluDeleteQuadric(obj);
@@ -120,33 +152,191 @@ static struct p5glove_data info;
 static GLfloat ambient_ir[4]={0.0, 0.2, 0.2, 1.0};
 static GLfloat diffuse_ir[4]={0.0, 0.8, 0.8, 1.0};
 
+void render_obj_leds(void)
+{
+	int i;
+	int mode=GL_FRONT;
+	GLUquadricObj *obj;
+
+	obj=gluNewQuadric();
+	gluQuadricDrawStyle(obj,GLU_SMOOTH);
+	gluQuadricOrientation(obj,GLU_OUTSIDE);
+
+	for (i=0;i < 8;i++) {
+		double pos[3];
+		char label[2]={0,0};
+		double size = 0.05;
+		p5glove_reference_led(glove,i,pos);
+		glMaterialfv(mode,GL_AMBIENT,ambient_ir);
+
+		diffuse_ir[0]=0.8;
+		diffuse_ir[1]=0.8;
+		diffuse_ir[2]=0.8;
+
+		if (info.ir[i].visible > 0) {
+			size *= 1.0+(5.0-info.ir[i].visible)/5.0;
+			diffuse_ir[0]=0.0;
+		}
+
+		glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+
+		glPushMatrix();
+		glTranslated(pos[0]*WORLD_SCALE,pos[1]*WORLD_SCALE,pos[2]*WORLD_SCALE);
+		label[0]='0'+i;
+		render_label(size,label);
+		gluSphere(obj,size,10,10);
+
+		if (info.ir[i].visible==1) {
+			/* White: Normal */
+			diffuse_ir[0]=1.0;
+			diffuse_ir[1]=1.0;
+			diffuse_ir[2]=1.0;
+			glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+			render_cylinder(0.05,zero,info.normal,"Normal");
+
+			/* Blue: Reference normal */
+			diffuse_ir[0]=0.0;
+			diffuse_ir[1]=0.0;
+			diffuse_ir[2]=1.0;
+			glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+			render_cylinder(0.05,zero,info.ref_normal,"Ref");
+		}
+
+		glPopMatrix();
+	}
+
+	gluDeleteQuadric(obj);
+}
+
+void render_axes(void)
+{
+	int mode=GL_FRONT;
+	diffuse_ir[0]=1.0;
+	diffuse_ir[1]=1.0;
+	diffuse_ir[2]=0.0;
+	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+	render_cylinder(0.05,zero,y_up,"Up");
+	render_cylinder(0.05,zero,y_down,"Down");
+	render_cylinder(0.05,zero,x_left,"Left");
+	render_cylinder(0.05,zero,x_right,"Right");
+	render_cylinder(0.05,zero,z_front,"Front");
+	render_cylinder(0.05,zero,z_back,"Back");
+}
+
 void render_obj_hand(void)
 {
 	int i,j;
-	GLUquadricObj *obj;
 	int mode=GL_FRONT;
+	double pos[3];
+	char label[2]={0,0};
+	GLUquadricObj *obj;
+
+	obj=gluNewQuadric();
+	gluQuadricDrawStyle(obj,GLU_SMOOTH);
+	gluQuadricOrientation(obj,GLU_OUTSIDE);
 
 	glMaterialfv(mode,GL_AMBIENT,ambient_ir);
 
 	diffuse_ir[0]=1.0;
 	diffuse_ir[1]=0.0;
 	diffuse_ir[2]=1.0;
-
 	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+	render_cylinder(0.05,zero,y_up,"Ref Up");
 
-	obj=gluNewQuadric();
+#if 1
+	glPushMatrix();
+	glRotated(info.rotation.angle,
+			info.rotation.axis[0],
+			info.rotation.axis[1],
+			info.rotation.axis[2]);
+	render_axes();
+	glPopMatrix();
+#endif
+
+#if 1
+	glPushMatrix();
+	memcpy(pos,info.position,sizeof(double)*3);
+	glTranslated(pos[0]*WORLD_SCALE,pos[1]*WORLD_SCALE,pos[2]*WORLD_SCALE);
+
+	/* White: Normal */
+	diffuse_ir[0]=1.0;
+	diffuse_ir[1]=1.0;
+	diffuse_ir[2]=1.0;
+	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+	render_cylinder(0.05,zero,info.normal,"Normal");
+
+	/* Green: Rotation axis */
+	diffuse_ir[0]=0.0;
+	diffuse_ir[1]=1.0;
+	diffuse_ir[2]=0.0;
+	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+	render_cylinder(0.05,zero,info.rotation.axis,"+Axis");
+	{ 
+		double nrot[3];
+		nrot[0]= -info.rotation.axis[0];
+		nrot[1]= -info.rotation.axis[1];
+		nrot[2]= -info.rotation.axis[2];
+		render_cylinder(0.05,zero,nrot,"-Axis");
+	}
+
+	/* Blue: Reference normal */
+	diffuse_ir[0]=0.0;
+	diffuse_ir[1]=0.0;
+	diffuse_ir[2]=1.0;
+	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+	render_cylinder(0.05,zero,info.ref_normal,"Ref");
+	glPopMatrix();
+#endif
+
+	/* Render the positions */
+	glPushMatrix();
+	diffuse_ir[0]=1.0;
+	diffuse_ir[1]=0.0;
+	diffuse_ir[2]=0.0;
+	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+	glTranslated(info.position[0]*WORLD_SCALE,info.position[1]*WORLD_SCALE,info.position[2]*WORLD_SCALE);
+	gluSphere(obj,0.05,10,10);
+	label[0]='0'+info.position_led[0];
+	render_label(0.05,label);
+	glPopMatrix();
 
 	glPushMatrix();
-	glTranslatef(info.position[0]*WORLD_SCALE,info.position[1]*WORLD_SCALE,info.position[2]*WORLD_SCALE);
-	gluQuadricDrawStyle(obj,GLU_SMOOTH);
- 	gluQuadricOrientation(obj,GLU_OUTSIDE);
-	gluSphere(obj,0.1,10,10);
+	diffuse_ir[0]=0.0;
+	diffuse_ir[1]=1.0;
+	diffuse_ir[2]=0.0;
+	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+	glTranslated(info.position_next[0]*WORLD_SCALE,info.position_next[1]*WORLD_SCALE,info.position_next[2]*WORLD_SCALE);
+	gluSphere(obj,0.05,10,10);
+	label[0]='0'+info.position_led[1];
+	render_label(0.05,label);
 	glPopMatrix();
+
+	glPushMatrix();
+	diffuse_ir[0]=0.0;
+	diffuse_ir[1]=0.0;
+	diffuse_ir[2]=1.0;
+	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+	glTranslated(info.position_last[0]*WORLD_SCALE,info.position_last[1]*WORLD_SCALE,info.position_last[2]*WORLD_SCALE);
+	gluSphere(obj,0.05,10,10);
+	label[0]='0'+info.position_led[2];
+	render_label(0.05,label);
+	glPopMatrix();
+
+#if 0
+	glPushMatrix();
+	diffuse_ir[0]=1.0;
+	diffuse_ir[1]=0.0;
+	diffuse_ir[2]=0.0;
+	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
+	glScaled(7.0,1.0,10.0);
+	glutSolidCube(0.1);
+	glPopMatrix();
+#endif
 
 	gluDeleteQuadric(obj);
 }
 
-static double yaw=0.0,tilt=0.0;
+static double yaw=0.0,tilt=0.0,pitch=0.0;
 
 void render_display(void)
 {
@@ -160,9 +350,12 @@ void render_display(void)
 
 	glRotated(tilt,0.0, 0.1, 0.0);
 	glRotated(yaw,0.0, 0.0, 1.0);
+	glRotated(pitch,1.0, 0.0, 0.0);
 
 	/* Render world */
 	render_obj_world();
+
+	render_obj_leds();
 
 	/* Draw samples here */
 	render_obj_hand();
@@ -193,17 +386,22 @@ void render_keyboard(unsigned char key, int x, int y)
 		case 27:
 			exit(0);
 			break;
-		case 'a':
-			yaw += 1.0;
-			break;
-		case 'd':
-			yaw -= 1.0;
-			break;
 		case 'w':
-			tilt += 1.0;
+			pitch += 1.0;
 			break;
 		case 's':
+			pitch -= 1.0;
+			break;
+		case 'a':
+			tilt += 1.0;
+			break;
+		case 'd':
 			tilt -= 1.0;
+			break;
+		case 'r':
+			tilt = 0.0;
+			pitch = 0.0;
+			yaw = 0.0;
 			break;
 		default:
 			break;
