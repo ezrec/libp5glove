@@ -371,39 +371,45 @@ int p5glove_sample(P5Glove p5, struct p5glove_data *info)
 	return err;
 }
 
-void p5glove_begin_calibration(P5Glove glove)
+void p5glove_begin_calibration(P5Glove p5)
 {
 #ifdef __WIN32__
-
+    char report[2] = { 0x01, 0x01 };
+    SetUSBHIDFeature( p5->usb, report, 2 );
 #endif
 }
 
-void p5glove_end_calibration(P5Glove glove)
+void p5glove_end_calibration(P5Glove p5)
 {
 #ifdef __WIN32__
-
+    char report[2] = { 0x01, 0x00 };
+    SetUSBHIDFeature( p5->usb, report, 2 );
 #endif
 }
 
-
-int p5glove_get_mouse_mode(P5Glove glove)
+int p5glove_get_mouse_mode(P5Glove p5)
 {
 #ifdef __WIN32__
-    return 0;
+    char report[2] = { 0x05, 0x00 };
+    GetUSBHIDFeature( p5->usb, report, 2 );
+
+    return (report[1] == 0x01)? 1 : 0;
 #endif
 }
 
-void p5glove_mouse_mode_on(P5Glove glove)
+void p5glove_mouse_mode_on(P5Glove p5)
 {
 #ifdef __WIN32__
-
+    char report[2] = { 0x05, 0x01 };
+    SetUSBHIDFeature( p5->usb, report, 2 );
 #endif
 }
 
-void p5glove_mouse_mode_off(P5Glove glove)
+void p5glove_mouse_mode_off(P5Glove p5)
 {
 #ifdef __WIN32__
-    
+    char report[2] = { 0x05, 0xFF };
+    SetUSBHIDFeature( p5->usb, report, 2 );
 #endif
 }
 
