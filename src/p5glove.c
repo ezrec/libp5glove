@@ -1,5 +1,5 @@
 /*
- * $Id$
+ * $Id: p5glove.c,v 1.1.1.1 2003/03/19 18:10:53 gus Exp $
  *
  *  Copyright (c) 2003 Jason McMullan <jmcmullan@linuxcare.com>
  *
@@ -8,8 +8,8 @@
 
 /*
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or 
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2.1 of the License, or 
  * (at your option) any later version.
  * 
  * This program is distributed in the hope that it will be useful,
@@ -17,7 +17,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  * 
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
@@ -115,10 +115,40 @@ static void process_sample(struct p5glove *p5, struct p5glove_data *info)
 		}
 
 #define SEX(value) ((((value) & 0x3FF) << (32-10)) >> (32-10))
-		info->ir[axis].x=SEX(value>>20);
+		info->ir[axis].x=SEX(value);
 		info->ir[axis].y=SEX(value>>10);
-		info->ir[axis].z=SEX(value);
+		info->ir[axis].z=SEX(value>>20);
 		info->ir[axis].visible=1;
+	}
+
+	/* Remove any spurious data */
+	for (i=0; i < 8; i++) {
+		int j;
+
+		if (!info->ir[i].visible)
+			continue;
+	
+		for (j=0; j < 8; j++) {
+			double dist,tmp;
+
+			if (i == j)
+				continue;
+			if (!info->ir[j].visible)
+				continue;
+
+			tmp=info->ir[i].x-info->ir[j].x;
+			dist = tmp*tmp;
+			tmp=info->ir[i].y-info->ir[j].y;
+			dist += tmp*tmp;
+			tmp=info->ir[i].z-info->ir[j].z;
+			dist += tmp*tmp;
+
+			if (dist < (200.0*200.0))
+				break;
+		}
+
+		if (j == 8)
+			info->ir[i].visible=0;
 	}
 }
 

@@ -1,5 +1,5 @@
 libtoolize --force
 autoheader
-automake --add-missing --foreign
-aclocal
+automake --add-missing
+aclocal -I macros
 autoconf

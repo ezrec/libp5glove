@@ -15,4 +15,10 @@ Library Features
 
   This library is a polling system. See demos/p5dump.c for a simple
 example usage.
-  
+
+What's This Kernel Patch?
+-------------------------
+
+  Some 2.4.x kernels' hid.o module will "eat" the P5 HID endpoint.
+Apply this patch to you kernel & rebuild the hid.o module to prevent
+this. (A similar thing happens with Watcom tablets)

@@ -4,22 +4,6 @@
 
 #include <p5glove.h>
 
-static inline double distance(struct p5glove_data *info,int a,int b)
-{
-	double tmp,dist;
-
-	tmp=(info->ir[a].x-info->ir[b].x);
-	dist = tmp*tmp;
-
-	tmp=(info->ir[a].y-info->ir[b].y);
-	dist += tmp*tmp;
-
-	tmp=(info->ir[a].z-info->ir[b].z);
-	dist += tmp*tmp;
-
-	return sqrt(dist);
-}
-
 /* Brain-Dead P5 data dump.
  */
 int main(int argc, char **argv)
@@ -74,13 +58,6 @@ int main(int argc, char **argv)
 		}
 
 		printf("\n");
-#if 1
-		if (info.ir[1].visible && info.ir[2].visible && info.ir[3].visible) {
-			printf("1-2 Distance: %.2f\n",distance(&info,1,2));
-			printf("2-3 Distance: %.2f\n",distance(&info,2,3));
-			printf("3-1 Distance: %.2f\n",distance(&info,3,1));
-		}
-#endif
 	}
 
 	p5glove_close(glove);
