@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <errno.h>
 #include <math.h>
+#include <stdlib.h> /* exit */
+#include <string.h> /* memset */
 
 #include <p5glove.h>
 
@@ -41,7 +43,7 @@ int main(int argc, char **argv)
 			(info.buttons & P5GLOVE_BUTTON_C) ? 'C' : '.');
 
 		/* Fingers */
-		printf("%2d,%2d.%2d.%2d.%2d ",
+		printf("%2d,%2d,%2d,%2d,%2d ",
 			info.finger[P5GLOVE_THUMB],
 			info.finger[P5GLOVE_INDEX],
 			info.finger[P5GLOVE_MIDDLE],
@@ -61,4 +63,6 @@ int main(int argc, char **argv)
 	}
 
 	p5glove_close(glove);
+
+    return 0;
 }

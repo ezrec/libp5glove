@@ -2,6 +2,7 @@
  * $Id$
  *
  *  Copyright (c) 2003 Jason McMullan <ezrec@hotmail.com>
+ *  Windows patch (c) 2004 Ross Bencina <rossb@audiomulch.com>
  *
  *  USB P5 Data Glove support
  */
@@ -23,15 +24,25 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h> /* for calloc */
+#include <string.h> /* for memcpy */
+#ifdef __WIN32__
+#include "win32_usb_hid.h"
+#else
 #include <usb.h>
+#endif
 #include <errno.h>
 #include "p5glove.h"
 
 struct p5glove {
 	unsigned char data[24],later[24];
 	char name[128];
+#ifdef __WIN32__
+    USBHIDHandle *usb;
+#else
 	struct usb_dev_handle *usb;
 	long long nextsamp;
+#endif
 };
 
 static void process_sample(struct p5glove *p5, struct p5glove_data *info)
@@ -55,6 +66,7 @@ static void process_sample(struct p5glove *p5, struct p5glove_data *info)
 	 * V - Packed 30 bit signed IR info (10 bits X, 10 bits Y, 10 bits Z), x4
 	 */
 
+#ifndef __WIN32__
 	if (data[16] == 1) {	/* Hmm. Offset by 16. Fix it. */
 		memcpy(tmp,later,24-16);
 		memcpy(later,data+16,24-16);
@@ -66,6 +78,7 @@ static void process_sample(struct p5glove *p5, struct p5glove_data *info)
 		memcpy(tmp+24-8,data,8);
 		data=tmp;
 	}
+#endif 
 
 	if (data[0] != 1) {
 		return;
@@ -76,8 +89,8 @@ static void process_sample(struct p5glove *p5, struct p5glove_data *info)
 
 		switch (i) {
 			case 0: value = data[1] >> 2; break;
-			case 1: value = (data[1] & 0x3) << 4 | (data[2] >> 4); break;
-			case 2: value = (data[2] & 0xF) << 2 | (data[3] >> 6); break;
+			case 1: value = ((data[1] & 0x3) << 4) | (data[2] >> 4); break;
+			case 2: value = ((data[2] & 0xF) << 2) | (data[3] >> 6); break;
 			case 3: value = (data[3] & 0x3F); break;
 			case 4: value = data[4] >> 2; break;
 			default: value = 0; break;
@@ -97,8 +110,16 @@ static void process_sample(struct p5glove *p5, struct p5glove_data *info)
 		int value;
 
 		axis = (data[5+((i+1)>>1)] >> ((i & 1) * 4)) & 0xf;
-		if (axis == 15)
-			continue;
+		if (axis > 7 ){
+            /* axis == 15 probably means that the slot is unused */
+            if( axis != 15){
+                /* at this stage we're not sure why the glove returns values > 7 here, but it does */
+                printf( "-------------------------------------------------------------------------------\n" );
+                printf( "warning: sensor slot %d > 7 (%d)\n", i, axis );
+                printf( "-------------------------------------------------------------------------------\n" );
+			}
+            continue;
+        }
 
 		switch (i) {
 			case 0: value = ((data[0x7] & 0x0F)<<26) | (data[0x8]<<18) | (data[0x9]<<10) | (data[0xA]<<2) | (data[0x0B]>>6);
@@ -154,6 +175,23 @@ static void process_sample(struct p5glove *p5, struct p5glove_data *info)
 
 P5Glove p5glove_open(void)
 {
+#ifdef __WIN32__
+    struct p5glove *p5;
+    USBHIDHandle *usb = OpenUSBHID (
+            0,                                                  /* 0th matching device */
+            0x0d7f,                                             /* vendor id */
+            0x0100,                                             /* product id */
+            0,                                                  /* version number (not used) */
+            SELECT_VENDOR_ID_FLAG | SELECT_PRODUCT_ID_FLAG );   /* selection flags */
+    if( usb != INVALID_USBHIDHANDLE_VALUE ){
+
+        p5 = calloc(1,sizeof(*p5));
+        p5->usb = usb;
+
+		return p5;
+    }
+
+#else
 	struct usb_bus *bus;
 	struct usb_device *dev;
 	struct p5glove *p5;
@@ -190,14 +228,18 @@ P5Glove p5glove_open(void)
 			return p5;
 		}
 	}
-
+#endif
 	return NULL;
 }
 
 void p5glove_close(P5Glove p5)
 {
 	if (p5->usb != NULL)
+#if __WIN32__
+        CloseUSBHID(p5->usb);
+#else
 		usb_close(p5->usb);
+#endif
 	p5->usb=NULL;
 	free(p5);
 }
@@ -205,6 +247,16 @@ void p5glove_close(P5Glove p5)
 int p5glove_sample(P5Glove p5, struct p5glove_data *info)
 {
 	int err;
+	
+#ifdef __WIN32__
+    if( ReadUSBHID( p5->usb, p5->data, 24 ) == 24 ){
+        process_sample(p5, info);
+        err = 0;
+    }else{
+        err = EACCES;
+    }
+
+#else
 	long long now;
 	struct timeval tv;
 
@@ -228,6 +280,7 @@ int p5glove_sample(P5Glove p5, struct p5glove_data *info)
 		fprintf(stderr,"Device reset. Crud.\n");
 		exit(1);
 	}
-
+#endif   
+    
 	return err;
 }

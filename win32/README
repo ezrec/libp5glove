@@ -1,0 +1,5 @@
+** HACK ALERT **
+
+This directory contains a hacked version of libhid.a which is an import library for C:\Windows\System32\hid.dll
+
+Right now the standard Mingw libhid.a seems to be missing the symbols we need. Note that our hacked version only contains the symbols we need and shouldn't be used elsewhere.

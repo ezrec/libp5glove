@@ -1,0 +1,48 @@
+LIBRARY     HID.DLL
+
+EXPORTS
+    HidD_FlushQueue                @1   ; HidD_FlushQueue
+    HidD_FreePreparsedData         @2   ; HidD_FreePreparsedData
+    HidD_GetAttributes@8 = HidD_GetAttributes@8           @3   ; HidD_GetAttributes
+    HidD_GetConfiguration          @4   ; HidD_GetConfiguration
+    HidD_GetFeature                @5   ; HidD_GetFeature
+    HidD_GetHidGuid@4 = HidD_GetHidGuid@4              @6   ; HidD_GetHidGuid
+    HidD_GetIndexedString          @7   ; HidD_GetIndexedString
+    HidD_GetInputReport            @8   ; HidD_GetInputReport
+    HidD_GetManufacturerString     @9   ; HidD_GetManufacturerString
+    HidD_GetMsGenreDescriptor      @10  ; HidD_GetMsGenreDescriptor
+    HidD_GetNumInputBuffers        @11  ; HidD_GetNumInputBuffers
+    HidD_GetPhysicalDescriptor     @12  ; HidD_GetPhysicalDescriptor
+    HidD_GetPreparsedData          @13  ; HidD_GetPreparsedData
+    HidD_GetProductString          @14  ; HidD_GetProductString
+    HidD_GetSerialNumberString@12 = HidD_GetSerialNumberString@12  @15  ; HidD_GetSerialNumberString
+    HidD_Hello                     @16  ; HidD_Hello
+    HidD_SetConfiguration          @17  ; HidD_SetConfiguration
+    HidD_SetFeature                @18  ; HidD_SetFeature
+    HidD_SetNumInputBuffers        @19  ; HidD_SetNumInputBuffers
+    HidD_SetOutputReport           @20  ; HidD_SetOutputReport
+    HidP_GetButtonCaps             @21  ; HidP_GetButtonCaps
+    HidP_GetCaps                   @22  ; HidP_GetCaps
+    HidP_GetData                   @23  ; HidP_GetData
+    HidP_GetExtendedAttributes     @24  ; HidP_GetExtendedAttributes
+    HidP_GetLinkCollectionNodes    @25  ; HidP_GetLinkCollectionNodes
+    HidP_GetScaledUsageValue       @26  ; HidP_GetScaledUsageValue
+    HidP_GetSpecificButtonCaps     @27  ; HidP_GetSpecificButtonCaps
+    HidP_GetSpecificValueCaps      @28  ; HidP_GetSpecificValueCaps
+    HidP_GetUsageValue             @29  ; HidP_GetUsageValue
+    HidP_GetUsageValueArray        @30  ; HidP_GetUsageValueArray
+    HidP_GetUsages                 @31  ; HidP_GetUsages
+    HidP_GetUsagesEx               @32  ; HidP_GetUsagesEx
+    HidP_GetValueCaps              @33  ; HidP_GetValueCaps
+    HidP_InitializeReportForID     @34  ; HidP_InitializeReportForID
+    HidP_MaxDataListLength         @35  ; HidP_MaxDataListLength
+    HidP_MaxUsageListLength        @36  ; HidP_MaxUsageListLength
+    HidP_SetData                   @37  ; HidP_SetData
+    HidP_SetScaledUsageValue       @38  ; HidP_SetScaledUsageValue
+    HidP_SetUsageValue             @39  ; HidP_SetUsageValue
+    HidP_SetUsageValueArray        @40  ; HidP_SetUsageValueArray
+    HidP_SetUsages                 @41  ; HidP_SetUsages
+    HidP_TranslateUsagesToI8042ScanCodes @42  ; HidP_TranslateUsagesToI8042ScanCodes
+    HidP_UnsetUsages               @43  ; HidP_UnsetUsages
+    HidP_UsageListDifference       @44  ; HidP_UsageListDifference
+    HidservInstaller               @45  ; HidservInstaller
