@@ -1,0 +1,72 @@
+libp5glove TODO
+Last updated: 29 March, 2004.
+
+
+
+libp5 reorganisation:
+
+	- move matrix code from p5hand.c to p5glove.c [DONE, added p5glove_process_sample() to p5glove.h]
+
+	- p5dump.c doesn't call p5glove_process_sample(), should probably add a flag (-r raw) and call p5glove_process_sample() by default.
+
+
+	- separate x-platform code into separate files from win / mac / linux usb i/o
+ 		- consider that at the moment the mac and pc implementations of p5glove_sample() block until data is available, whereas the linux version returns EAGAIN.
+		- tim thinks the glove is an interrupt device (is reading it that way from the mac) so perhaps this accounts for the shifting code on Linux.
+ 	- tim to clean up osx usb i/o code [DONE, merged]
+	
+
+libp5 additions:
+
+	- bend sensor calibration functions: p5glove_begin_calibration(), p5glove_end_calibration()
+ 		- involves sending a HID feature report #1 to toggle callibration mode:
+  			01 01  // begin calibration
+  			01 00 // end calibration
+
+	- enable disable mouse mode 
+		- send hid feature reports. perhaps only necessary on PC right now.
+
+	glove data massage:
+		- centroid location
+		 - normal location (pitch/yaw/roll)
+		 - identifying/stripping bad led positions
+		  - violation of glove geometry
+		  - dynamics logic (ie sudden direction change in one led only)
+	 	- unwrapping overflow data (check whether it happens on any glove but ross').
+		- improve coordinate warping (smoother z)
+
+ (optional/future)
+	- support mouse mode on linux and mac
+	- extend p5glove_data to include centroid (xyz) and rotation (yaw,pitch,roll)
+ 	- data smoothing in libp5glove (ie Kalman filter)
+ 	- relative mode
+	- roid suggests using the glove buttons to toggle settings ie: turning filtering matrix on/off, to ease comparisons to the raw unfiltered data without needing 2. perhaps this is something for p5hand.c
+	- also add "option for adjusting centroid location to properly reflect hand position, rather than glove position" to (optional/future).
+
+
+mac:
+	- installer for kext
+	- bus error when device isn't connected (bad error cleanup?) 
+
+
+"p5osc" osc client appliction:
+ ( tim, mac: done )
+ ( ross, pc: todo )
+  (see http://www.cnmat.berkeley.edu/OpenSoundControl/)
+  - command line flags:
+   - host ip address (-h)    [default localhost]
+   - port number (-p)    [default 47110]
+   - dump output to stdout (-d) [default: off]
+  - tagged and bundled:
+  - osc address '/p5glove_data'
+   - int: button a
+   - int: button a
+   - int: button a
+   - int: (5 fingers...)
+   - int: (x,y,z)
+   - int: number of leds visisble (0-4)
+   - int: (yaw,pitch,roll)
+
+
+
+
