@@ -71,6 +71,11 @@ int ReadUSBHID( USBHIDHandle handle, void *dest, int count );
 void DumpUSBHIDDeviceInfo();
 
 
+void SetUSBHIDFeature( USBHIDHandle handle, char *report, int count );
+
+void GetUSBHIDFeature( USBHIDHandle handle, char *report, int count );
+
+
 #ifdef __cplusplus
 }
 #endif

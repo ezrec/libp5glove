@@ -74,6 +74,21 @@ HidD_GetSerialNumberString (
    IN    ULONG    BufferLength
    );
 
+
+BOOLEAN __stdcall
+HidD_SetFeature(
+    IN HANDLE  HidDeviceObject,
+    IN PVOID  ReportBuffer,
+    IN ULONG  ReportBufferLength
+    );
+
+BOOLEAN __stdcall
+HidD_GetFeature(
+    IN HANDLE  HidDeviceObject,
+    OUT PVOID  ReportBuffer,
+    IN ULONG  ReportBufferLength
+    );
+
 #include <poppack.h>
 
 #endif
@@ -325,10 +340,12 @@ void DumpUSBHIDDeviceInfo()
     EnumHidDevices( DumpHidDeviceInfoEnumProc, 0 );
 }
 
+void SetUSBHIDFeature( USBHIDHandle handle, char *report, int count )
+{
+    HidD_SetFeature( handle, report, count );
+}
 
-
-
-
-
-
-
+void GetUSBHIDFeature( USBHIDHandle handle, char *report, int count )
+{
+    HidD_GetFeature( handle, report, count );
+}
