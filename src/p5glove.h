@@ -1,7 +1,7 @@
 /*
- * $Id: p5glove.h,v 1.1.1.1 2003/03/19 18:10:53 gus Exp $
+ * $Id$
  *
- *  Copyright (c) 2003 Jason McMullan <jmcmullan@linuxcare.com>
+ *  Copyright (c) 2003 Jason McMullan <ezrec@hotmail.com>
  *
  *  USB P5 Data Glove support
  */
