@@ -143,8 +143,11 @@ static inline void p5glove_vec_mat(const double vec[3],double mat[4][4],double r
 {
 	int r,c;
 
-	for (r=0; r < 3; r++) for (c=0; c < 3; c++)
-		res[r] += vec[c]*mat[c][r];
+	for (r=0; r < 3; r++) {
+		res[r]=0.0;
+		for (c=0; c < 3; c++)
+			res[r] += vec[c]*mat[c][r];
+	}
 }
 
 static inline double p5glove_dot(const double a[3],const double b[3])
@@ -160,7 +163,7 @@ static inline double p5glove_dot(const double a[3],const double b[3])
 
 /* This is safe to call with v==res
  */
-static inline void p5glove_normalize(const double v[3],double res[3])
+static inline void p5glove_normal(const double v[3],double res[3])
 {
 	double tmp=0.0;
 	int i;
@@ -175,8 +178,8 @@ static inline void p5glove_normalize(const double v[3],double res[3])
 		res[i] = v[i] / tmp;
 }
 
-/* Normal of three points */
-static inline void p5glove_normal(const double p1[3],const double p2[3],const double p3[3],double xyz[3])
+/* Get the plane normal of three points */
+static inline void p5glove_plane(const double p1[3],const double p2[3],const double p3[3],double xyz[3])
 {
 	double v1[3],v2[3];
 
@@ -190,7 +193,10 @@ static inline void p5glove_normal(const double p1[3],const double p2[3],const do
 
 	p5glove_cross(v1,v2,xyz);
 
-	p5glove_normalize(xyz,xyz);
+	if (xyz[0]==0.0 && xyz[1]==0.0 && xyz[2]==0.0)
+		xyz[1]=1.0;
+
+	p5glove_normal(xyz,xyz);
 }
 
 /* Angle of three points */
@@ -206,8 +212,8 @@ static inline double p5glove_angle(const double p1[3],const double p2[3],const d
 	v2[1]=p3[1]-p2[1];
 	v2[2]=p3[2]-p2[2];
 
-	p5glove_normalize(v1,v1);
-	p5glove_normalize(v2,v2);
+	p5glove_normal(v1,v1);
+	p5glove_normal(v2,v2);
 
 	return acos(p5glove_dot(v1,v2));
 }

@@ -38,6 +38,7 @@
 #include <errno.h>
 #include "p5glove.h"
 
+#define DEBUG
 #ifdef DEBUG
 #define DPRINTF(fmt,args...) fprintf(stderr,"p5: " fmt , ##args )
 #else
@@ -191,9 +192,9 @@ void p5g_process_led(P5Glove p5,int led,double pos[3])
 
 	zprime = d/(tan(v1)-tan(v2));
 
-	pos[0]=sin(h)*zprime;
+	pos[0]=-sin(h)*zprime;
 	pos[1]=tan(v1)*zprime-d/2.0;	/* Places 0 in the center */
-	pos[2]=-(cos(h)*zprime-d*2.0); /* A reasonable Z center */
+	pos[2]=cos(h)*zprime-d*2.0; /* A reasonable Z center */
 }
 
 int p5glove_reference_led(P5Glove p5, int led, double pos[3])
@@ -274,7 +275,7 @@ static int p5g_best_leds(P5Glove p5,int led[4],double pos[4][3])
 	/* For each led-led pair, determine the error % versus the
 	 * reference distances
 	 */
-	DPRINTF("\nDistances: %d - %d - %d - %d\n",led[0],led[1],led[2],led[3]);
+	DPRINTF("Distances: %d - %d - %d - %d\n",led[0],led[1],led[2],led[3]);
 	for (i=0; i < leds; i++) {
 		for (j=i+1 ;j < leds; j++) {
 			double ref_dist = p5glove_dist(p5->cal.led[led[i]],p5->cal.led[led[j]]);
@@ -284,7 +285,7 @@ static int p5g_best_leds(P5Glove p5,int led[4],double pos[4][3])
 			DPRINTF("%d - %d: %.4lf ",led[i],led[j],ref_dist);
 			DPRINTF("(%.4lf) [%.4lf]\n",led[i],led[j],dist,err);
 
-			/* Max 20% error margin on distance */
+			/* Max 9% error margin on distance */
 			if (err > 0.20) {
 				error[i]++;
 				error[j]++;
@@ -400,7 +401,7 @@ static int p5g_process_sample(P5Glove p5)
 	int i,j,leds;
 	int led[4] = {-1,-1,-1,-1};
 	double pos[4][3];
-	double pos_normal[3],ref_normal[3];
+	double pos_plane[3],ref_plane[3];
 	double rot_matrix[4][4];
 	double c,s,t;
 	double x,y,z;
@@ -420,30 +421,31 @@ static int p5g_process_sample(P5Glove p5)
 		return p5g_delta(p5,1,0);
 
 	/* Calculate reference normal of the leds */
-	p5glove_normal(p5->cal.led[led[0]],
+	p5glove_plane(p5->cal.led[led[0]],
 		       p5->cal.led[led[1]],
-		       p5->cal.led[led[2]],ref_normal);
+		       p5->cal.led[led[2]],ref_plane);
 
 	/* Calculate actual normal of the leds */
-	p5glove_normal(pos[0],pos[1],pos[2],pos_normal);
+	p5glove_plane(pos[0],pos[1],pos[2],pos_plane);
 
 	/* Calculate cos(theta) from the dot product of the ref and actual */
-	c=p5glove_dot(ref_normal,pos_normal);
+	c=p5glove_dot(ref_plane,pos_plane);
 	p5->data.rotation.angle=acos(c)*180.0/M_PI;
-	s=sin(acos(c));
-	t=1.0-c;
-
 	/* Calculate the rotation axis normal */
-	p5glove_normal(ref_normal,zero,pos_normal,p5->data.rotation.axis);
+	p5glove_plane(ref_plane,zero,pos_plane,p5->data.rotation.axis);
 
 DPRINTF("Position: %d - %d - %d\n",led[0],led[1],led[2]);
-DPRINTF("Reference normal: [%.4lf, %.4lf, %.4lf]\n",ref_normal[0],ref_normal[1],ref_normal[2]);
-DPRINTF("Position  normal: [%.4lf, %.4lf, %.4lf]\n",pos_normal[0],pos_normal[1],pos_normal[2]);
-DPRINTF("Reference angle:   %.4lf\n",p5glove_dot(ref_normal,y_up)*180.0/M_PI);
-DPRINTF("Normal up angle:   %.4lf\n",p5glove_dot(pos_normal,y_up)*180.0/M_PI);
+DPRINTF("Position: [%.4lf, %.4lf,%.4lf]\n",pos[0][0],pos[0][1],pos[0][2]);
+DPRINTF("Reference normal: [%.4lf, %.4lf, %.4lf]\n",ref_plane[0],ref_plane[1],ref_plane[2]);
+DPRINTF("Position  normal: [%.4lf, %.4lf, %.4lf]\n",pos_plane[0],pos_plane[1],pos_plane[2]);
+DPRINTF("Reference angle:   %.4lf\n",p5glove_dot(ref_plane,y_up)*180.0/M_PI);
+DPRINTF("Normal up angle:   %.4lf\n",p5glove_dot(pos_plane,y_up)*180.0/M_PI);
 DPRINTF("Rotation angle:      %.4lf\n",p5->data.rotation.angle);
 DPRINTF("Rotation axis :   [%.4lf, %.4lf, %.4lf]\n",p5->data.rotation.axis[0],p5->data.rotation.axis[1],p5->data.rotation.axis[2]);
-return p5g_delta(p5,1,1);
+
+	c=cos(p5->data.rotation.angle*M_PI/180.0);
+	s=sin(p5->data.rotation.angle*M_PI/180.0);
+	t=1.0-c;
 
 	/* Calculate transformation matrix, in column major order */
 	x=p5->data.rotation.axis[0];
@@ -474,12 +476,13 @@ return p5g_delta(p5,1,1);
 	rot_matrix[3][2]=0;
 	rot_matrix[3][3]=1;
 
-	/* Now, apply the rotation angle to the reference point */
+	/* Now, apply the rotation angle to the position */
 	p5glove_vec_mat(p5->cal.led[led[0]],rot_matrix,pos[1]);
 
-	/* Then simply subtract the difference from the position to get the *real* point */
+	/* Then simply subtract the difference from the 
+	 * reference position to get the *real* point */
 	for (i=0; i<3; i++)
-		p5->data.position[i] = pos[0][i]-pos[1][i];
+		p5->data.position[i] = pos[0][i] - pos[1][i];
 
 	/* There! The position is corrected, the rotation matrix is complete - we're done! */
 	return p5g_delta(p5,1,1);
@@ -521,7 +524,7 @@ static int p5g_parse_report12(struct p5glove *p5,uint8_t *buff)
 			int16_t val;
 			val = get_bits(buff,16+(48*led)+(16*axis),16);
 			p5->cal.led[led][axis]=REPORT12_TO_METERS(val);
-			if (axis == 2)
+			if (axis == 0)
 				p5->cal.led[led][axis] *= -1.0;
 		}
 	}

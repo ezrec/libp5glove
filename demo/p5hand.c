@@ -75,7 +75,6 @@ void render_label(GLdouble size, const char *string)
 {
 	glPushMatrix();
 	glTranslated(+size/2,size,0);
-	glRotated(180,0.0,1.0,0.0);
 	glScaled(0.001,0.001,0.001);
 	while (*string)
 		glutStrokeCharacter(GLUT_STROKE_ROMAN,*(string++));
@@ -86,25 +85,23 @@ void render_cylinder(GLdouble diameter,const GLdouble p1[3],const GLdouble p2[3]
 {
 	GLdouble v[3],dist,ax,r[3];
 	GLUquadricObj *obj;
+	int is_z=0;
 
 	v[0]=p2[0]-p1[0];
 	v[1]=p2[1]-p1[1];
 	v[2]=p2[2]-p1[2];
 
 	dist=sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);
-	if (dist == 0)
+	if (dist == 0.0)
 		return;
 
 	v[0] /= dist;
 	v[1] /= dist;
 	v[2] /= dist;
 
+	/* Compute angle and rotation axis */
 	ax=180.0/M_PI * acos(p5glove_dot(z_front,v));
-
-	if (ax != 0.0) {
-		p5glove_normal(z_front,zero,v,r);
-
-	}
+	p5glove_plane(z_front,zero,v,r);
 
 	obj=gluNewQuadric();
 	gluQuadricDrawStyle(obj,GLU_SMOOTH);
@@ -204,12 +201,12 @@ void render_axes(void)
 	diffuse_ir[1]=1.0;
 	diffuse_ir[2]=0.0;
 	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-	render_cylinder(0.05,zero,y_up,"Up");
-	render_cylinder(0.05,zero,y_down,"Down");
-	render_cylinder(0.05,zero,x_left,"Left");
-	render_cylinder(0.05,zero,x_right,"Right");
-	render_cylinder(0.05,zero,z_front,"Front");
-	render_cylinder(0.05,zero,z_back,"Back");
+	render_cylinder(0.05,zero,y_up,"+Y");
+	render_cylinder(0.05,zero,y_down,"-Y");
+	render_cylinder(0.05,zero,x_left,"-X");
+	render_cylinder(0.05,zero,x_right,"+X");
+	render_cylinder(0.05,zero,z_front,"-Z");
+	render_cylinder(0.05,zero,z_back,"+Z");
 }
 
 void render_objs(void)
@@ -247,10 +244,12 @@ void render_display(void)
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
+	glTranslatef(0.0,0.0,-WORLD_SIZE*0.95);
+#if 0
 	gluLookAt(      0.0, 0.0, -WORLD_SIZE*.95, /* Eye */
-			0.0, 0.0, 1.0, /* Horizon */
+			0.0, 0.0, 0.0, /* Horizon */
 			0.0, 1.0, 0.0);    /* Up */
-
+#endif
 	glRotated(tilt,0.0, 0.1, 0.0);
 	glRotated(yaw,0.0, 0.0, 1.0);
 	glRotated(pitch,1.0, 0.0, 0.0);
