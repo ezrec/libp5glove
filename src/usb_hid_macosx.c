@@ -295,3 +295,71 @@ int ReadUSBHID( USBHIDHandle usbHidHandle, void *data, int count )
     
     return readSize;
 }
+
+
+int HIrequest(void *usbHidHandle, UInt8 RequestType, UInt16 Request, UInt16 ReportId, int index, unsigned char *raw_buf, int ReportSize )
+{
+    IOUSBDevRequest 			request;
+    IOUSBInterfaceInterface183 	**intf = usbHidHandle;
+    IOUSBDeviceInterface 		**device;
+    io_service_t				usbDeviceRef;
+    IOReturn 					success = 0 ;
+    char 						test[2];
+
+    // 0x21 for set, 0xA1for get
+    request.bmRequestType = RequestType;
+    request.bRequest = Request;
+    request.wValue = ReportId;
+    request.wIndex = index;
+    request.wLength = ReportSize;
+    request.pData = raw_buf;
+
+  //   (*theDev)->DeviceRequest(theDev, &request);    
+    success = (*intf)->ControlRequest(intf, 0, &request);
+     
+    if(success != kIOReturnSuccess)
+        printf("Hi Request Failed \n");
+    return success;
+ 
+}
+
+
+int usb_get_report(void *usbHidHandle,int ReportId, unsigned char *raw_buf, int ReportSize )
+{
+	int err;
+
+	err =	HIrequest(usbHidHandle, 
+                         0xA1, /* Request Type */
+                         0x01, /* HID_REPORT_GET */
+                         ReportId+(0x03<<8), /* HID_REPORT_TYPE_FEATURE */
+                         1, /* Index */
+                         raw_buf, ReportSize);
+//	if (err == -EPIPE)
+//		goto retry;
+	return err;
+}
+
+
+int usb_set_report(void *usbHidHandle,int ReportId, unsigned char *raw_buf, int ReportSize )
+{
+	return 	HIrequest(usbHidHandle, 
+                         0x21, /* Request Type */
+                         0x09, /* HID_REPORT_SET */
+                         ReportId+(0x03<<8), /* HID_REPORT_TYPE_FEATURE */
+                         1, /* Index */
+                         raw_buf, ReportSize);
+
+}
+
+int SetUSBHIDFeature( USBHIDHandle handle, char *report, int count )
+{
+    usb_set_report(handle, report[0]&0xf, report, count );
+
+}
+
+int GetUSBHIDFeature( USBHIDHandle handle, char *report, int count )
+{
+    usb_get_report(handle, report[0]&0xf, report, count );
+
+}
+
