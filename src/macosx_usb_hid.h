@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2004 Tim Kreger
+    Copyright (c) 2004 Tim Kreger <tkreger@bigpond.net.au>
 
     Macintosh OS X USB HID I/O routines
 

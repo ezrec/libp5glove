@@ -3,7 +3,7 @@
  *
  *  Copyright (c) 2003 Jason McMullan <ezrec@hotmail.com>
  *  Windows patch (c) 2004 Ross Bencina <rossb@audiomulch.com>
- *  MacOSX patch (c) 2004 Tim Kreger
+ *  MacOSX patch (c) 2004 Tim Kreger <tkreger@bigpond.net.au>
  *
  *  USB P5 Data Glove support
  */
