@@ -45,18 +45,11 @@
 #include <errno.h>
 #include "p5glove.h"
 
-static uint8_t report_12[] = {
-	0x0c, 0x00, 
-	0xff, 0x01, 0x00, 0x0c, 0x00, 0xad, 
-	0xff, 0x0d, 0xff, 0xe5, 0xff, 0xe4, 
-	0xff, 0x50, 0x00, 0x1e, 0xff, 0xcf, 
-	0xff, 0xdc, 0x00, 0x66, 0xff, 0xf6, 
-	0x00, 0xa9, 0xff, 0xef, 0xff, 0xa5, 
-	0x00, 0xcc, 0x00, 0x03, 0x00, 0xd6, 
-	0xfe, 0xea, 0xff, 0xc1, 0x00, 0x9b, 
-	0x00, 0xc6, 0xff, 0xb8, 0x00, 0xd9,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+#ifdef DEBUG
+#define DPRINTF(fmt,args...) fprintf(stderr,"p5: " fmt , ##args )
+#else
+#define DPRINTF(fmt,args...) do { } while (0)
+#endif
 
 struct p5glove {
 	unsigned char data[24],later[24];
@@ -201,6 +194,7 @@ int p5glove_reference_led(P5Glove p5, int led, double pos[3])
 	return 0;
 }
 
+#ifdef CHECK_ACUTE_TRIANGLES
 static int p5glove_check_triangle(P5Glove p5,int led1,int led2,int led3)
 {
 	double c;
@@ -217,13 +211,14 @@ static int p5glove_check_triangle(P5Glove p5,int led1,int led2,int led3)
 				p5->cal.led[led[(i+2)%3]])*180.0/M_PI; 
 
 		/* At too acute/obtune an angle? */
-		printf("Angle %d-%d-%d is %.4lf\n",led[i],led[(i+1)%3],led[(i+2)%3],c);
+		DPRINTF("Angle %d-%d-%d is %.4lf\n",led[i],led[(i+1)%3],led[(i+2)%3],c);
 		if (c < 7.0)
 			return -EINVAL;
 	}
 
 	return 0;
 }
+#endif
 
 /* Determine the 'best' leds to use form the data.
  * Return the # of good leds
@@ -268,15 +263,15 @@ static int p5glove_best_leds(P5Glove p5,struct p5glove_data *info,int led[4],dou
 	/* For each led-led pair, determine the error % versus the
 	 * reference distances
 	 */
-	printf("\nDistances: %d - %d - %d - %d\n",led[0],led[1],led[2],led[3]);
+	DPRINTF("\nDistances: %d - %d - %d - %d\n",led[0],led[1],led[2],led[3]);
 	for (i=0; i < leds; i++) {
 		for (j=i+1 ;j < leds; j++) {
 			double ref_dist = p5glove_dist(p5->cal.led[led[i]],p5->cal.led[led[j]]);
 			double dist = p5glove_dist(pos[i],pos[j]);
 			double err = fabs(dist-ref_dist)/ref_dist;
 
-			printf("%d - %d: %.4lf ",led[i],led[j],ref_dist);
-			printf("(%.4lf) [%.4lf]\n",led[i],led[j],dist,err);
+			DPRINTF("%d - %d: %.4lf ",led[i],led[j],ref_dist);
+			DPRINTF("(%.4lf) [%.4lf]\n",led[i],led[j],dist,err);
 
 			/* Max 20% error margin on distance */
 			if (err > 0.20) {
@@ -292,7 +287,7 @@ static int p5glove_best_leds(P5Glove p5,struct p5glove_data *info,int led[4],dou
 		if (error[i] != j)
 			continue;
 
-		printf("Dead: Led %d\n",led[i]);
+		DPRINTF("Dead: Led %d\n",led[i]);
 		leds--;
 		if (i != leds) {
 			memcpy(&error[i],&error[i+1],sizeof(int)*(leds-i));
@@ -304,7 +299,7 @@ static int p5glove_best_leds(P5Glove p5,struct p5glove_data *info,int led[4],dou
 			return leds;
 	}
 
-
+#ifdef CHECK_ACUTE_TRIANGLES
 	/* Not enough left for rotation. Darn. */
 	if (leds < 3)
 		return leds;
@@ -335,7 +330,7 @@ static int p5glove_best_leds(P5Glove p5,struct p5glove_data *info,int led[4],dou
 	}
 
 	for (i=0; i < leds; i++)
-		printf("%d: error=%d\n",led[i],error[i]);
+		DPRINTF("%d: error=%d\n",led[i],error[i]);
 
 
 	/* Mark as dead anything with an error index of leds-1 */
@@ -344,7 +339,7 @@ static int p5glove_best_leds(P5Glove p5,struct p5glove_data *info,int led[4],dou
 		if (error[i] != j)
 			continue;
 
-		printf("Dead: Led %d\n",led[i]);
+		DPRINTF("Dead: Led %d\n",led[i]);
 		leds--;
 		if (i != leds) {
 			memcpy(&error[i],&error[i+1],sizeof(int)*(leds-i));
@@ -355,6 +350,7 @@ static int p5glove_best_leds(P5Glove p5,struct p5glove_data *info,int led[4],dou
 		if (leds == 1)
 			return leds;
 	}
+#endif /* CHECK_ACUTE_TRIANGES */
 
 	return leds;
 }
@@ -400,13 +396,13 @@ int p5glove_process_sample(P5Glove p5, struct p5glove_data *info)
 	/* Calculate the rotation axis normal */
 	p5glove_normal(ref_normal,zero,pos_normal,info->rotation.axis);
 
-printf("Position: %d - %d - %d\n",led[0],led[1],led[2]);
-printf("Reference normal: [%.4lf, %.4lf, %.4lf]\n",ref_normal[0],ref_normal[1],ref_normal[2]);
-printf("Position  normal: [%.4lf, %.4lf, %.4lf]\n",pos_normal[0],pos_normal[1],pos_normal[2]);
-printf("Reference angle:   %.4lf\n",p5glove_dot(ref_normal,y_up)*180.0/M_PI);
-printf("Normal up angle:   %.4lf\n",p5glove_dot(pos_normal,y_up)*180.0/M_PI);
-printf("Rotation angle:      %.4lf\n",info->rotation.angle);
-printf("Rotation axis :   [%.4lf, %.4lf, %.4lf]\n",info->rotation.axis[0],info->rotation.axis[1],info->rotation.axis[2]);
+DPRINTF("Position: %d - %d - %d\n",led[0],led[1],led[2]);
+DPRINTF("Reference normal: [%.4lf, %.4lf, %.4lf]\n",ref_normal[0],ref_normal[1],ref_normal[2]);
+DPRINTF("Position  normal: [%.4lf, %.4lf, %.4lf]\n",pos_normal[0],pos_normal[1],pos_normal[2]);
+DPRINTF("Reference angle:   %.4lf\n",p5glove_dot(ref_normal,y_up)*180.0/M_PI);
+DPRINTF("Normal up angle:   %.4lf\n",p5glove_dot(pos_normal,y_up)*180.0/M_PI);
+DPRINTF("Rotation angle:      %.4lf\n",info->rotation.angle);
+DPRINTF("Rotation axis :   [%.4lf, %.4lf, %.4lf]\n",info->rotation.axis[0],info->rotation.axis[1],info->rotation.axis[2]);
 memcpy(info->normal,pos_normal,sizeof(pos_normal));
 memcpy(info->ref_normal,ref_normal,sizeof(ref_normal));
 memcpy(info->position,pos[0],sizeof(double)*3);
@@ -528,7 +524,7 @@ static int p5glove_parse_report12(struct p5glove *p5,uint8_t *buff)
 
 #ifdef DEBUG_CAL
 for (led=0; led < 12; led++) {
-	printf("%d %.4lf %.4lf %.4lf\n",led,
+	DPRINTF("%d %.4lf %.4lf %.4lf\n",led,
 			p5->cal.led[led][0],
 			p5->cal.led[led][1],
 			p5->cal.led[led][2]);
@@ -557,11 +553,11 @@ static int p5glove_calibrate(struct p5glove *p5)
 	err=p5glove_parse_report6(p5,report6_buff);
 
 #ifdef DEBUG_CALIB
-printf("Cal results:\n");
+DPRINTF("Cal results:\n");
 { int i; for (i=0;i<2;i++) {
-printf("\tHead %d.v = %.2f deg\n",i,p5->cal.head[i].v * 180.0/M_PI);
-printf("\tHead %d.h = %.2f deg\n",i,p5->cal.head[i].h * 180.0/M_PI);} }
-printf("\tHead Distance = %.2f meters\n",p5->cal.head_dist);
+DPRINTF("\tHead %d.v = %.2f deg\n",i,p5->cal.head[i].v * 180.0/M_PI);
+DPRINTF("\tHead %d.h = %.2f deg\n",i,p5->cal.head[i].h * 180.0/M_PI);} }
+DPRINTF("\tHead Distance = %.2f meters\n",p5->cal.head_dist);
 #endif
 
 end:
@@ -597,7 +593,7 @@ P5Glove p5glove_open(void)
 			    dev->descriptor.idProduct != 0x0100)
 				continue;
 
-			printf("Found P5 device at %s/%s\n",bus->dirname,dev->filename);
+			DPRINTF("Found P5 device at %s/%s\n",bus->dirname,dev->filename);
 			usb = usb_open(dev);
 			if (usb == NULL)
 				continue;

@@ -23,6 +23,11 @@ const GLdouble x_right[4]={1.0,0.0,0.0,1.0};
 const GLdouble z_front[4]={0.0,0.0,-1.0,1.0};
 const GLdouble z_back[4]={0.0,0.0,1.0,1.0};
 
+static int d_ref_axes=0;
+static int d_ref_hand=1;
+static int d_position=1;
+static int d_rotation=0;
+
 void render_init(void)
 {
 	GLfloat fogColor[4]= {0.7, 0.7, 0.7, 1.0};
@@ -122,7 +127,7 @@ void render_cylinder(GLdouble diameter,const GLdouble p1[3],const GLdouble p2[3]
 	gluDeleteQuadric(obj);
 }
 
-void render_obj_world(void)
+void render_world(void)
 {
 	 GLUquadricObj *obj;
 	 int mode=GL_FRONT;
@@ -152,7 +157,7 @@ static struct p5glove_data info;
 static GLfloat ambient_ir[4]={0.0, 0.2, 0.2, 1.0};
 static GLfloat diffuse_ir[4]={0.0, 0.8, 0.8, 1.0};
 
-void render_obj_leds(void)
+void render_hand(void)
 {
 	int i;
 	int mode=GL_FRONT;
@@ -186,22 +191,6 @@ void render_obj_leds(void)
 		render_label(size,label);
 		gluSphere(obj,size,10,10);
 
-		if (info.ir[i].visible==1) {
-			/* White: Normal */
-			diffuse_ir[0]=1.0;
-			diffuse_ir[1]=1.0;
-			diffuse_ir[2]=1.0;
-			glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-			render_cylinder(0.05,zero,info.normal,"Normal");
-
-			/* Blue: Reference normal */
-			diffuse_ir[0]=0.0;
-			diffuse_ir[1]=0.0;
-			diffuse_ir[2]=1.0;
-			glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-			render_cylinder(0.05,zero,info.ref_normal,"Ref");
-		}
-
 		glPopMatrix();
 	}
 
@@ -223,117 +212,33 @@ void render_axes(void)
 	render_cylinder(0.05,zero,z_back,"Back");
 }
 
-void render_obj_hand(void)
+void render_objs(void)
 {
 	int i,j;
 	int mode=GL_FRONT;
 	double pos[3];
-	char label[2]={0,0};
-	GLUquadricObj *obj;
-
-	obj=gluNewQuadric();
-	gluQuadricDrawStyle(obj,GLU_SMOOTH);
-	gluQuadricOrientation(obj,GLU_OUTSIDE);
 
 	glMaterialfv(mode,GL_AMBIENT,ambient_ir);
 
-	diffuse_ir[0]=1.0;
-	diffuse_ir[1]=0.0;
-	diffuse_ir[2]=1.0;
-	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-	render_cylinder(0.05,zero,y_up,"Ref Up");
-
-#if 1
 	glPushMatrix();
-	glRotated(info.rotation.angle,
+
+	if (d_position) {
+		memcpy(pos,info.position,sizeof(double)*3);
+		glTranslated(pos[0]*WORLD_SCALE,pos[1]*WORLD_SCALE,pos[2]*WORLD_SCALE);
+	}
+
+	if (d_rotation) {
+		glRotated(info.rotation.angle,
 			info.rotation.axis[0],
 			info.rotation.axis[1],
 			info.rotation.axis[2]);
-	render_axes();
-	glPopMatrix();
-#endif
-
-#if 1
-	glPushMatrix();
-	memcpy(pos,info.position,sizeof(double)*3);
-	glTranslated(pos[0]*WORLD_SCALE,pos[1]*WORLD_SCALE,pos[2]*WORLD_SCALE);
-
-	/* White: Normal */
-	diffuse_ir[0]=1.0;
-	diffuse_ir[1]=1.0;
-	diffuse_ir[2]=1.0;
-	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-	render_cylinder(0.05,zero,info.normal,"Normal");
-
-	/* Green: Rotation axis */
-	diffuse_ir[0]=0.0;
-	diffuse_ir[1]=1.0;
-	diffuse_ir[2]=0.0;
-	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-	render_cylinder(0.05,zero,info.rotation.axis,"+Axis");
-	{ 
-		double nrot[3];
-		nrot[0]= -info.rotation.axis[0];
-		nrot[1]= -info.rotation.axis[1];
-		nrot[2]= -info.rotation.axis[2];
-		render_cylinder(0.05,zero,nrot,"-Axis");
 	}
 
-	/* Blue: Reference normal */
-	diffuse_ir[0]=0.0;
-	diffuse_ir[1]=0.0;
-	diffuse_ir[2]=1.0;
-	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-	render_cylinder(0.05,zero,info.ref_normal,"Ref");
+	if (d_ref_axes)
+		render_axes();
+	if (d_ref_hand)
+		render_hand();
 	glPopMatrix();
-#endif
-
-	/* Render the positions */
-	glPushMatrix();
-	diffuse_ir[0]=1.0;
-	diffuse_ir[1]=0.0;
-	diffuse_ir[2]=0.0;
-	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-	glTranslated(info.position[0]*WORLD_SCALE,info.position[1]*WORLD_SCALE,info.position[2]*WORLD_SCALE);
-	gluSphere(obj,0.05,10,10);
-	label[0]='0'+info.position_led[0];
-	render_label(0.05,label);
-	glPopMatrix();
-
-	glPushMatrix();
-	diffuse_ir[0]=0.0;
-	diffuse_ir[1]=1.0;
-	diffuse_ir[2]=0.0;
-	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-	glTranslated(info.position_next[0]*WORLD_SCALE,info.position_next[1]*WORLD_SCALE,info.position_next[2]*WORLD_SCALE);
-	gluSphere(obj,0.05,10,10);
-	label[0]='0'+info.position_led[1];
-	render_label(0.05,label);
-	glPopMatrix();
-
-	glPushMatrix();
-	diffuse_ir[0]=0.0;
-	diffuse_ir[1]=0.0;
-	diffuse_ir[2]=1.0;
-	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-	glTranslated(info.position_last[0]*WORLD_SCALE,info.position_last[1]*WORLD_SCALE,info.position_last[2]*WORLD_SCALE);
-	gluSphere(obj,0.05,10,10);
-	label[0]='0'+info.position_led[2];
-	render_label(0.05,label);
-	glPopMatrix();
-
-#if 0
-	glPushMatrix();
-	diffuse_ir[0]=1.0;
-	diffuse_ir[1]=0.0;
-	diffuse_ir[2]=0.0;
-	glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
-	glScaled(7.0,1.0,10.0);
-	glutSolidCube(0.1);
-	glPopMatrix();
-#endif
-
-	gluDeleteQuadric(obj);
 }
 
 static double yaw=0.0,tilt=0.0,pitch=0.0;
@@ -353,12 +258,10 @@ void render_display(void)
 	glRotated(pitch,1.0, 0.0, 0.0);
 
 	/* Render world */
-	render_obj_world();
-
-	render_obj_leds();
+	render_world();
 
 	/* Draw samples here */
-	render_obj_hand();
+	render_objs();
 
 	glutSwapBuffers();
 }
@@ -398,10 +301,22 @@ void render_keyboard(unsigned char key, int x, int y)
 		case 'd':
 			tilt -= 1.0;
 			break;
-		case 'r':
+		case 'R':
 			tilt = 0.0;
 			pitch = 0.0;
 			yaw = 0.0;
+			break;
+		case 'h':
+			d_ref_hand ^= 1;
+			break;
+		case 'x':
+			d_ref_axes ^= 1;
+			break;
+		case 'p':
+			d_position ^= 1;
+			break;
+		case 'r':
+			d_rotation ^= 1;
 			break;
 		default:
 			break;
@@ -410,6 +325,17 @@ void render_keyboard(unsigned char key, int x, int y)
 
 int main(int argc,char **argv)
 {
+	printf("Keys:\n"
+	       "ESC/q: quit\n"
+	       "    w: pitch forward\n"
+	       "    s: pitch back\n"
+	       "    a: rotate left\n"
+	       "    d: rotate right\n"
+	       "    R: reset all rotations\n"
+	       "    h: Toggle reference led display\n"
+	       "    x: Toggle reference axis display\n"
+	       "    p: Toggle glove position information\n"
+	       "    r: Toggle glove rotation information\n");
 	glutInit(&argc,argv);
 
 	glutInitDisplayMode(GLUT_DOUBLE|GLUT_RGB|GLUT_DEPTH);
