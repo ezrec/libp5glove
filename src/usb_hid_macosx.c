@@ -21,8 +21,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#error HEY TIM! Move 'svn delete' this one, and fix up
-#error usb_hid_macosx.c Thanks, Jason
+
 
 #include <stdio.h>
 #include <math.h>

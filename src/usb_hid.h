@@ -1,7 +1,8 @@
 /*
     Copyright (c) 2004 Ross Bencina <rossb@audiomulch.com>
+    Copyright (c) 2004 Jason McMullan <ezrec@hotmail.com>
 
-    Win32 USB HID I/O routines
+     USB/HID I/O routines
 */
 /*
  * This program is free software; you can redistribute it and/or modify
@@ -18,17 +19,16 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
-
-#ifndef INCLUDED_WIN32_USB_HID_H
-#define INCLUDED_WIN32_USB_HID_H
+#ifndef USB_HID_H
+#define USB_HID_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef void* USBHIDHandle;
+typedef struct USBHID_struct *USBHID;
 
-#define INVALID_USBHIDHANDLE_VALUE      (0)
+#define INVALID_USBHID_VALUE      (0)
 
 
 #define SELECT_VENDOR_ID_FLAG           (0x01)
@@ -44,13 +44,13 @@ typedef void* USBHIDHandle;
     Returns an open handle on success, or INVALID_USBHIDHANDLE if an error
     occurred.
 */
-USBHIDHandle OpenUSBHID( int index, int vendorId, int productId, int versionNumber, int flags );
+USBHID OpenUSBHID( int index, int vendorId, int productId, int versionNumber, int flags );
 
 
 /*
     Close a USB HID handle previously opened with OpenUSBHID()
 */
-void CloseUSBHID( USBHIDHandle handle );
+void CloseUSBHID( USBHID handle );
 
 
 /*
@@ -62,22 +62,16 @@ void CloseUSBHID( USBHIDHandle handle );
     HidD_GetInputReport will read the most recent report, but is only
     implemented on Windows XP.
 */
-int ReadUSBHID( USBHIDHandle handle, void *dest, int count );
+int ReadUSBHID( USBHID handle, void *dest, int count );
 
 
-/*
-    Debugging function, writes information about all USB HID devices to stdout.
-*/
-void DumpUSBHIDDeviceInfo();
+int SetUSBHIDFeature( USBHID handle, char *report, int count );
 
-
-void SetUSBHIDFeature( USBHIDHandle handle, char *report, int count );
-
-void GetUSBHIDFeature( USBHIDHandle handle, char *report, int count );
+int GetUSBHIDFeature( USBHID handle, char *report, int count );
 
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* INCLUDED_WIN32_USB_HID_H */
+#endif /* USB_HID_H */

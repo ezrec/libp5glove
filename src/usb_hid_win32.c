@@ -22,7 +22,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
-#include "win32_usb_hid.h"
+#include "usb_hid.h"
 #include <windows.h>
 #include <stdio.h>
 #include <setupapi.h>
@@ -256,7 +256,7 @@ BOOL FindHidDeviceEnumProc( PSP_DEVICE_INTERFACE_DATA deviceInterfaceData,
 }
 
 
-USBHIDHandle OpenUSBHID( int index, int vendorId, int productId, int versionNumber, int flags )
+USBHID OpenUSBHID( int index, int vendorId, int productId, int versionNumber, int flags )
 {
     FindHidDeviceEnumData data;
 
@@ -271,9 +271,9 @@ USBHIDHandle OpenUSBHID( int index, int vendorId, int productId, int versionNumb
     EnumHidDevices( FindHidDeviceEnumProc, &data );
 
     if( data.deviceHandle == INVALID_HANDLE_VALUE )
-        return INVALID_USBHIDHANDLE_VALUE;
+        return INVALID_USBHID_VALUE;
     else
-        return data.deviceHandle; 
+        return (USBHID)data.deviceHandle; 
 }
 
 
@@ -321,31 +321,26 @@ BOOL DumpHidDeviceInfoEnumProc( PSP_DEVICE_INTERFACE_DATA deviceInterfaceData,
 }
 
 
-void CloseUSBHID( USBHIDHandle handle )
+void CloseUSBHID( USBHID handle )
 {
-    CloseHandle( handle );
+    CloseHandle( (HANDLE)handle );
 }
 
-int ReadUSBHID( USBHIDHandle handle, void *dest, int count )
+int ReadUSBHID( USBHID handle, void *dest, int count )
 {
     DWORD bytesRead;
 
-    ReadFile( handle, dest, count, &bytesRead, 0 );
+    ReadFile( (HANDLE)handle, dest, count, &bytesRead, 0 );
 
     return bytesRead;
 }
 
-void DumpUSBHIDDeviceInfo()
+int SetUSBHIDFeature( USBHID handle, char *report, int count )
 {
-    EnumHidDevices( DumpHidDeviceInfoEnumProc, 0 );
+    return HidD_SetFeature( handle, report, count ) == TRUE ? 0 : -EINVAL;
 }
 
-void SetUSBHIDFeature( USBHIDHandle handle, char *report, int count )
+void GetUSBHIDFeature( USBHID handle, char *report, int count )
 {
-    HidD_SetFeature( handle, report, count );
-}
-
-void GetUSBHIDFeature( USBHIDHandle handle, char *report, int count )
-{
-    HidD_GetFeature( handle, report, count );
+    return HidD_GetFeature( handle, report, count ) == TRUE ? 0 : -EINVAL;
 }

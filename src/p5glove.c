@@ -24,9 +24,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
  
-#if !defined(__MACOSX__) && defined(__APPLE__) && defined(__MACH__)
-#define __MACOSX__	1
-#endif 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h> /* for calloc */
@@ -34,15 +34,7 @@
 #include <string.h> /* for memcpy */
 #include <math.h>
 
-#if defined(__WIN32__)
-#include "win32_usb_hid.h"
-#elif defined(__MACOSX__)
-#include "macosx_usb_hid.h"
-#else
-#include <usb.h>
-#include "config.h"
-#endif
-
+#include "usb_hid.h"
 #include <errno.h>
 #include "p5glove.h"
 
@@ -53,6 +45,8 @@
 #endif
 
 struct p5glove {
+	USBHID usb;
+
 	char name[128];
 
 	/* Calibration data from Report 12 & 6 */
@@ -89,13 +83,6 @@ struct p5glove {
 			double angle;	/* In degrees */
 		} rotation;
 	} data,prev;
-
-#if defined(__WIN32__) || defined(__MACOSX__)
-	USBHIDHandle *usb;
-#else
-	struct usb_dev_handle *usb;
-	long long nextsamp;
-#endif
 };
 
 static uint32_t get_bits(uint8_t *data,int pos,int len)
@@ -498,58 +485,6 @@ return p5g_delta(p5,1,1);
 	return p5g_delta(p5,1,1);
 }
 
-#ifdef __linux__
-#define USB_TIMEOUT 1000
-
-int usb_get_input(struct usb_dev_handle *udev,int ReportId, unsigned char *raw_buf, int ReportSize )
-{
-	int err;
-retry:
-	err=usb_control_msg(udev, 
-                         USB_ENDPOINT_IN + USB_TYPE_CLASS + USB_RECIP_INTERFACE,
-                         0x01, /* HID_REPORT_GET */
-                         ReportId+(0x02<<8), /* HID_REPORT_TYPE_INPUT */
-                         1, raw_buf, ReportSize, USB_TIMEOUT);
-	if (err == -EPIPE)
-		goto retry;
-	return err;
-}
-
-
-int usb_set_output(struct usb_dev_handle *udev,int ReportId, unsigned char *raw_buf, int ReportSize )
-{
-	return usb_control_msg(udev, 
-                         USB_ENDPOINT_OUT + USB_TYPE_CLASS + USB_RECIP_INTERFACE,
-                         0x09, /* HID_REPORT_SET = 0x09*/
-                         ReportId+(0x02<<8), /* HID_REPORT_TYPE_OUPUT */
-                         1, raw_buf, ReportSize, USB_TIMEOUT);
-}
-
-int usb_get_feature(struct usb_dev_handle *udev,int ReportId, unsigned char *raw_buf, int ReportSize )
-{
-	int err;
-retry:
-	err=usb_control_msg(udev, 
-                         USB_ENDPOINT_IN + USB_TYPE_CLASS + USB_RECIP_INTERFACE,
-                         0x01, /* HID_REPORT_GET */
-                         ReportId+(0x03<<8), /* HID_REPORT_TYPE_FEATURE */
-                         1, raw_buf, ReportSize, USB_TIMEOUT);
-	if (err == -EPIPE)
-		goto retry;
-	return err;
-}
-
-
-int usb_set_feature(struct usb_dev_handle *udev,int ReportId, unsigned char *raw_buf, int ReportSize )
-{
-	return usb_control_msg(udev, 
-                         USB_ENDPOINT_OUT + USB_TYPE_CLASS + USB_RECIP_INTERFACE,
-                         0x09, /* HID_REPORT_SET = 0x09*/
-                         ReportId+(0x03<<8), /* HID_REPORT_TYPE_FEATURE */
-                         1, raw_buf, ReportSize, USB_TIMEOUT);
-}
-#endif
-
 static int p5glove_parse_report6(struct p5glove *p5,int8_t *buff)
 {
 	/* We are given 32nds of a degree, so: */
@@ -638,66 +573,29 @@ end:
 P5Glove p5glove_open(int glove_number)
 {
 	struct p5glove *p5 = NULL;
-#if defined(__WIN32__) || defined(__MACOSX__)
-	USBHIDHandle *usb = OpenUSBHID (
-            0,                                                  /* 0th matching device */
+	USBHID usb;
+	int err;
+       
+	usb = OpenUSBHID (
+            1,                                                  /* 1st matching device */
             0x0d7f,                                             /* vendor id */
             0x0100,                                             /* product id */
             0,                                                  /* version number (not used) */
             SELECT_VENDOR_ID_FLAG | SELECT_PRODUCT_ID_FLAG );   /* selection flags */
-	if ( usb == INVALID_USBHIDHANDLE_VALUE )
-		usb = NULL;
-#else
-	struct usb_bus *bus;
-	struct usb_device *dev;
-	struct usb_dev_handle *usb = NULL;
-	int err;
+	if ( usb == INVALID_USBHID_VALUE )
+		return NULL;
 
-	usb_init();
-
-	usb_find_busses();
-	usb_find_devices();
-
-	for (bus = usb_get_busses(); bus != NULL; bus = bus->next) {
-		for (dev = bus->devices; dev != NULL; dev = dev->next) {
-			if (dev->descriptor.idVendor != 0x0d7f ||
-			    dev->descriptor.idProduct != 0x0100)
-				continue;
-
-			DPRINTF("Found P5 device at %s/%s\n",bus->dirname,dev->filename);
-			usb = usb_open(dev);
-			if (usb == NULL)
-				continue;
-
-			err=usb_claim_interface(usb,1);
-			if (err < 0) {
-				fprintf(stderr,"Can't claim P5 glove interface: %s\n",strerror(errno));
-				usb_close(usb);
-				return NULL;
-			}
-
-			break;
+	p5=calloc(1,sizeof(*p5));
+	p5->usb=usb;
+	err = p5glove_calibrate(p5);
+	if (err < 0) {
+		if (err == -EBUSY) {
+			fprintf(stderr,"libp5glove: Can't get feature reports.\n");
+			fprintf(stderr,"libp5glove: If you have the 'usbmouse' module loaded, please unload it.\n");
 		}
-		if (usb != NULL)
-			break;
-	}
-#endif
-	if (usb != NULL) {
-		int err;
-
-		p5=calloc(1,sizeof(*p5));
-		p5->usb=usb;
-		err = p5glove_calibrate(p5);
-		if (err < 0) {
-			if (err == -EBUSY) {
-				fprintf(stderr,"libp5glove: Can't get feature reports.\n");
-				fprintf(stderr,"libp5glove: If you have the 'usbmouse' module loaded, please unload it.\n");
-			}
-			free(p5);
-			usb_release_interface(usb,1);
-			usb_close(usb);
-			return NULL;
-		}
+		free(p5);
+		CloseUSBHID(usb);
+		return NULL;
 	}
 
 	return p5;
@@ -706,12 +604,7 @@ P5Glove p5glove_open(int glove_number)
 void p5glove_close(P5Glove p5)
 {
 	if (p5->usb != NULL) {
-#if defined(__WIN32__) || defined(__MACOSX__)
 		CloseUSBHID(p5->usb);
-#else
-		usb_release_interface(p5->usb,1);
-		usb_close(p5->usb);
-#endif
 	}
 	p5->usb=NULL;
 	free(p5);
@@ -722,40 +615,13 @@ int p5glove_sample(P5Glove p5,int timeout)
 	int err;
 	uint8_t data[24];
 	
-#if defined(__WIN32__) || defined(__MACOSX__)
-    if( ReadUSBHID( p5->usb, data, 24 ) == 24 ){
-        p5g_unpack_sample(p5, data);
-        err = 0;
-    }else{
-        errno = EACCES;
-        err = -1;
-    }
-
-#else
-#ifndef HAVE_USB_INTERRUPT_READ
-# define usb_read(usb,ep,data,len,tm)	usb_bulk_read(usb,ep,data,len,tm)
-# define usb_clear_halt(usb,ep) usb_resetep(usb,ep)
-#else
-//# define usb_read(usb,ep,data,len,tm)	usb_get_input(usb,1,data,len)
-# define usb_read(usb,ep,data,len,tm)	usb_interrupt_read(usb,ep,data,len,tm)
-#endif
-retry:
-	err=usb_read(p5->usb, 0x81, data, 24, 1000);
-	if (err == 24) { 
-		if (data[0] != 1) {
-printf("Damn. Report mangled. Restart your app.\n"); exit(0);
-			usb_read(p5->usb, 0x81, data, 1, timeout);
-			goto retry;
-		}
+	if ( ReadUSBHID( p5->usb, data, 24 ) == 24 && data[0]==1) {
 		p5g_unpack_sample(p5, data);
 		err=p5g_process_sample(p5);
-	} else if (err < 0 && errno == EILSEQ)
-		err=0;
-	else if (err < 0 && errno == ENODEV) {
-		fprintf(stderr,"Device reset. Crud.\n");
-		usb_clear_halt(p5->usb, 0x81);
+	} else {
+		errno = EACCES;
+		err = -1;
 	}
-#endif   
     
 	return err;
 }
@@ -787,43 +653,33 @@ int p5glove_get_rotation(P5Glove p5,double *angle,double axis[3])
 
 void p5glove_begin_calibration(P5Glove p5)
 {
-#ifdef __WIN32__
     char report[2] = { 0x01, 0x01 };
     SetUSBHIDFeature( p5->usb, report, 2 );
-#endif
 }
 
 void p5glove_end_calibration(P5Glove p5)
 {
-#ifdef __WIN32__
     char report[2] = { 0x01, 0x00 };
     SetUSBHIDFeature( p5->usb, report, 2 );
-#endif
 }
 
 int p5glove_get_mouse_mode(P5Glove p5)
 {
-#ifdef __WIN32__
     char report[2] = { 0x05, 0x00 };
     GetUSBHIDFeature( p5->usb, report, 2 );
 
     return (report[1] == 0x01)? 1 : 0;
-#endif
 }
 
 void p5glove_mouse_mode_on(P5Glove p5)
 {
-#ifdef __WIN32__
     char report[2] = { 0x05, 0x01 };
     SetUSBHIDFeature( p5->usb, report, 2 );
-#endif
 }
 
 void p5glove_mouse_mode_off(P5Glove p5)
 {
-#ifdef __WIN32__
     char report[2] = { 0x05, 0xFF };
     SetUSBHIDFeature( p5->usb, report, 2 );
-#endif
 }
 
