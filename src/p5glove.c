@@ -40,6 +40,7 @@
 #include "macosx_usb_hid.h"
 #else
 #include <usb.h>
+#include "config.h"
 #endif
 
 #include <errno.h>
@@ -598,6 +599,7 @@ P5Glove p5glove_open(void)
 			if (usb == NULL)
 				continue;
 
+			usb_resetep(usb, 0x81);
 			err=usb_claim_interface(usb,1);
 			if (err < 0) {
 				fprintf(stderr,"Can't claim P5 glove interface: %s\n",strerror(errno));
@@ -652,7 +654,12 @@ int p5glove_sample(P5Glove p5, struct p5glove_data *info)
     }
 
 #else
+
+#ifdef HAVE_USB_INTERRUPT_READ
 	err=usb_interrupt_read(p5->usb, 0x81, p5->data, 24, 2000);
+#else
+	err=usb_bulk_read(p5->usb, 0x81, p5->data, 24, 2000);
+#endif
 	if (err == 24) { 
 		unpack_sample(p5, info);
 		err=0;

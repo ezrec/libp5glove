@@ -28,6 +28,10 @@ fi
 dnl Replace `main' with a function in -lusb:
 AC_CHECK_LIB(usb, usb_open)
 
+AC_CHECK_LIB(usb, usb_interrupt_read, 
+	     [AC_DEFINE(HAVE_USB_INTERRUPT_READ,1,[libusb has usb_interrupt_read()])],
+	     [AC_MSG_WARN([You should really use libusb 0.1.7 or higher for usb_interrupt_read() support.])])
+
 dnl Checks for header files.
 
 dnl Checks for typedefs, structures, and compiler characteristics.
