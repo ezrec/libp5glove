@@ -25,6 +25,8 @@
 #ifndef P5GLOVE_H
 #define P5GLOVE_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,43 +50,17 @@ typedef struct p5glove *P5Glove;
 #define P5GLOVE_IR_THUMB_BOT	7
 
 /* Finger Sensor Index */
-#define P5GLOVE_INDEX	0
-#define P5GLOVE_MIDDLE	1
-#define P5GLOVE_RING	2
-#define P5GLOVE_PINKY	3
-#define P5GLOVE_THUMB	4
-
-struct p5glove_data {
-	int buttons;	/* Button bitmask */
-	int finger[5];	/* Finger clench values (0-63) */
-	/* Raw glove data */
-	struct p5glove_ir {
-		int visible;	/* Was the sensor visible? */
-		int v1,v2,h;
-	} ir[8];	/* IR Sensors values.  (-511 - 511) */
-
-	/* Computed from p5glove_process_sample 
-	 */
-	double position[3];	/* Position */
-	double ref_normal[3];	/* Position */
-	double normal[3];	/* Position */
-	double position_next[3];	/* Position */
-	double position_last[3];	/* Position */
-	int position_led[3];
-
-	/* Rotation information */
-	struct {
-		double axis[3];	/* Rotation axis (normalized) */
-		double angle;	/* In degrees */
-	} rotation;
-};
-
+#define P5GLOVE_FINGER_INDEX	0
+#define P5GLOVE_FINGER_MIDDLE	1
+#define P5GLOVE_FINGER_RING	2
+#define P5GLOVE_FINGER_PINKY	3
+#define P5GLOVE_FINGER_THUMB	4
 
 /* p5glove_open:
- * Open a handle to a P5 Glove. Returns NULL on error,
+ * Open a handle to the Nth P5 Glove. Returns NULL on error,
  * and sets errno appropriately.
  */
-P5Glove p5glove_open(void);
+P5Glove p5glove_open(int glove_number);
 
 
 /* p5glove_close:
@@ -92,27 +68,44 @@ P5Glove p5glove_open(void);
  */
 void p5glove_close(P5Glove glove);
 
+#define P5GLOVE_DELTA_BUTTONS		0x01
+#define P5GLOVE_DELTA_FINGERS		0x02
+#define P5GLOVE_DELTA_POSITION		0x04
+#define P5GLOVE_DELTA_ROTATION		0x08
 
 /* p5glove_sample
- * Retrieve a sample from the P5
- * Returns 0 on success, -1 on error, and sets 
- * errno to EAGAIN is called faster then the refresh frequency.
+ * Retrieve a sample from the P5, before 'timeout' milliseconds
+ * (timeout of < 0 means forever)
+ * Returns the 'delta mask' on success, -1 on error, and sets 
+ * errno to EAGAIN if it is called faster than the refresh frequency.
  */
-int p5glove_sample(P5Glove glove, struct p5glove_data *data);
+int p5glove_sample(P5Glove glove, int timeout);
 
 
-/* p5glove_process_sample
- * Clean up raw glove data returned by p5glove_sample
- * Eliminates erroneous values, linearizes coordinates, etc.
- *
- * Returns:
- * 	 -ENOENT if no LED found
- * 	 0	position (at least 1 led)
- * 	 1	position & rotation (at least 3 leds)
+/* Get information about the current glove state
  */
-int p5glove_process_sample(P5Glove glove, struct p5glove_data *data);
 
-int p5glove_reference_led(P5Glove glove,int led,double pos[3]);
+/* Reference LED positions (in meters)
+ */
+int p5glove_get_led(P5Glove glove,int led,double position[3]);
+
+/* Button states 
+ */
+int p5glove_get_buttons(P5Glove glove,uint32_t *button_mask);
+
+/* Finger flex
+ * (0.0 - unclenched, 1.0 - clenched)
+ */
+int p5glove_get_finger(P5Glove glove,int finger,double *clench);
+
+/* Current glove position (in meters)
+ */
+int p5glove_get_position(P5Glove glove,double position[3]);
+
+/* Get Axis/Angle rotation information (angle is in degrees)
+ */
+int p5glove_get_rotation(P5Glove glove,double *angle,double axis[3]);
+
 
 void p5glove_begin_calibration(P5Glove glove);
 void p5glove_end_calibration(P5Glove glove);

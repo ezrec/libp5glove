@@ -6,33 +6,46 @@
 
 #include <p5glove.h>
 
-static void dump_cooked(P5Glove glove,struct p5glove_data *info)
+static void dump_cooked(P5Glove glove,uint32_t mask)
 {
-	printf("[%.4f, %.4f, %.4f] ",
-		info->position[0],
-		info->position[1],
-		info->position[2]);
 
-	printf("(%.4f, %.4f, %.4f, %.4f deg) ",
-		info->rotation.axis[0],
-		info->rotation.axis[1],
-		info->rotation.axis[2],
-		info->rotation.angle);
-}
+	if (mask & P5GLOVE_DELTA_BUTTONS) {
+		uint32_t buttons;
 
-static void dump_raw(P5Glove glove,struct p5glove_data *info)
-{
-	int i;
-
-	/* Visible IRs */
-	for (i = 0; i < 8; i++) {
-		if (! info->ir[i].visible)
-			continue;
-
-		printf("%d:(%4d,%4d,%4d) ",i,
-				info->ir[i].h,info->ir[i].v1,info->ir[i].v2);
+		p5glove_get_buttons(glove,&buttons);
+		/* Buttons */
+		printf("%c%c%c ",
+			(buttons & P5GLOVE_BUTTON_A) ? 'A' : '.',
+			(buttons & P5GLOVE_BUTTON_B) ? 'B' : '.',
+			(buttons & P5GLOVE_BUTTON_C) ? 'C' : '.');
 	}
 
+	if (mask & P5GLOVE_DELTA_FINGERS) {
+		double clench;
+		int i;
+
+		for (i=0; i < 5; i++) {
+			/* Fingers */
+			p5glove_get_finger(glove,i,&clench);
+			printf("%.4lf%c",clench,i==4 ? ' ' : ',');
+		}
+	}
+
+	if (mask & P5GLOVE_DELTA_POSITION) {
+		double pos[3];
+
+		p5glove_get_position(glove, pos);
+		printf("[%.4f, %.4f, %.4f] ",
+			pos[0], pos[1], pos[2]);
+	}
+
+	if (mask & P5GLOVE_DELTA_ROTATION) {
+		double axis[3],angle;
+
+		p5glove_get_rotation(glove, &angle, axis);
+		printf("(%.4f, %.4f, %.4f, %.4f deg) ",
+			axis[0], axis[1], axis[2], angle);
+	}
 }
 
 /* Brain-Dead P5 data dump.
@@ -40,24 +53,18 @@ static void dump_raw(P5Glove glove,struct p5glove_data *info)
 int main(int argc, char **argv)
 {
 	P5Glove glove;
-	struct p5glove_data info;
-	int sample,cooked=0;
+	int sample;
 
-	glove=p5glove_open();
+	glove=p5glove_open(1);
 	if (glove == NULL) {
 		fprintf(stderr, "%s: Can't open glove interface\n", argv[0]);
 		return 1;
 	}
 
-	if (argc>1 && !strcmp(argv[1],"-c"))
-		cooked=1;
-
-	printf("Dumping the next 100 samples...\n");
-	memset(&info,0,sizeof(info));
-	for (sample=0; ; ) {
+	for (sample=0; sample < 100 ; ) {
 		int i,err;
 
-		err=p5glove_sample(glove,&info);
+		err=p5glove_sample(glove, -1);
 		if (err < 0 && errno == EAGAIN)
 			continue;
 		if (err < 0) {
@@ -68,26 +75,7 @@ int main(int argc, char **argv)
 		printf("%2d: ",sample);
 		sample++;
 
-		/* Buttons */
-		printf("%c%c%c ",
-			(info.buttons & P5GLOVE_BUTTON_A) ? 'A' : '.',
-			(info.buttons & P5GLOVE_BUTTON_B) ? 'B' : '.',
-			(info.buttons & P5GLOVE_BUTTON_C) ? 'C' : '.');
-
-		/* Fingers */
-		printf("%2d,%2d,%2d,%2d,%2d ",
-			info.finger[P5GLOVE_THUMB],
-			info.finger[P5GLOVE_INDEX],
-			info.finger[P5GLOVE_MIDDLE],
-			info.finger[P5GLOVE_RING],
-			info.finger[P5GLOVE_PINKY]);
-
-		if (cooked) {
-			p5glove_process_sample(glove,&info);
-			dump_cooked(glove,&info);
-		} else {
-			dump_raw(glove,&info);
-		}
+		dump_cooked(glove,err);
 
 		printf("\n");
 	}

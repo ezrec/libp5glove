@@ -53,7 +53,6 @@
 #endif
 
 struct p5glove {
-	unsigned char data[24],later[24];
 	char name[128];
 
 	/* Calibration data from Report 12 & 6 */
@@ -66,6 +65,30 @@ struct p5glove {
 		double	head_dist;	/* in Meters */
 		double  led[10][3];
 	} cal;
+
+	struct p5glove_data {
+		struct timeval sampled;	/* Time sampled at */
+		uint32_t valid;		/* Which data items are valid (mask) */
+
+		int buttons;	/* Button bitmask */
+		int finger[5];	/* Finger clench values (0-63) */
+
+		/* Raw glove data */
+		struct p5glove_ir {
+			int visible;	/* Was the sensor visible? */
+			int v1,v2,h;
+		} ir[8];	/* IR Sensors values.  (-511 - 511) */
+
+		/* Computed from p5g_process_sample 
+		 */
+		double position[3];	/* Position */
+
+		/* Rotation information */
+		struct {
+			double axis[3];	/* Rotation axis (normalized) */
+			double angle;	/* In degrees */
+		} rotation;
+	} data,prev;
 
 #if defined(__WIN32__) || defined(__MACOSX__)
 	USBHIDHandle *usb;
@@ -108,9 +131,8 @@ static int32_t get_bits_signed(uint8_t *data,int pos,int len)
 	return value | mask;
 }
 
-static void unpack_sample(struct p5glove *p5, struct p5glove_data *info)
+static void p5g_unpack_sample(struct p5glove *p5, uint8_t data[24])
 {
-	unsigned char *data = p5->data, *later=p5->later;
 	unsigned char tmp[24];
 	int visible=1;
 	int i;
@@ -131,6 +153,7 @@ static void unpack_sample(struct p5glove *p5, struct p5glove_data *info)
 	 */
 
 	if (data[0] != 1) {
+printf("Odd. Sample [0]=%d\n",data[0]);
 		return;
 	}
 
@@ -146,14 +169,14 @@ static void unpack_sample(struct p5glove *p5, struct p5glove_data *info)
 			default: value = 0; break;
 		}
 
-		info->finger[i]=get_bits(data,8+6*i,6);
+		p5->data.finger[i]=get_bits(data,8+6*i,6);
 	}
 
-	info->buttons=get_bits(data,40,4);
+	p5->data.buttons=get_bits(data,40,4);
 
 	/* Clear visibility */
 	for (i=0 ; i <8; i++)
-		info->ir[i].visible=0;
+		p5->data.ir[i].visible=0;
 
 	for (i=0; i < 4; i++) {
 		int axis;
@@ -163,20 +186,20 @@ static void unpack_sample(struct p5glove *p5, struct p5glove_data *info)
 		if (axis & 0x8)
 			continue;
 
-		info->ir[axis].v2=get_bits_signed(data,60+(i*30),10);
-		info->ir[axis].v1=get_bits_signed(data,60+(i*30)+10,10);
-		info->ir[axis].h=get_bits_signed(data,60+(i*30)+20,10);
-		info->ir[axis].visible=visible++;
+		p5->data.ir[axis].v2=get_bits_signed(data,60+(i*30),10);
+		p5->data.ir[axis].v1=get_bits_signed(data,60+(i*30)+10,10);
+		p5->data.ir[axis].h=get_bits_signed(data,60+(i*30)+20,10);
+		p5->data.ir[axis].visible=visible++;
 	}
 }
 
-void p5glove_process_led(P5Glove p5, struct p5glove_data *info,int led,double pos[3])
+void p5g_process_led(P5Glove p5,int led,double pos[3])
 {
 	double v1,v2,h,d,zprime;
 
-	v1 = atan(info->ir[led].v1/512.0)+p5->cal.head[0].v;
-	v2 = atan(info->ir[led].v2/512.0)+p5->cal.head[1].v;
-	h = atan(info->ir[led].h/512.0);
+	v1 = atan(p5->data.ir[led].v1/512.0)+p5->cal.head[0].v;
+	v2 = atan(p5->data.ir[led].v2/512.0)+p5->cal.head[1].v;
+	h = atan(p5->data.ir[led].h/512.0);
 	d = p5->cal.head_dist;
 
 	zprime = d/(tan(v1)-tan(v2));
@@ -224,7 +247,7 @@ static int p5glove_check_triangle(P5Glove p5,int led1,int led2,int led3)
 /* Determine the 'best' leds to use form the data.
  * Return the # of good leds
  */
-static int p5glove_best_leds(P5Glove p5,struct p5glove_data *info,int led[4],double pos[4][3])
+static int p5g_best_leds(P5Glove p5,int led[4],double pos[4][3])
 {
 	int leds;
 	int i,j;
@@ -235,29 +258,29 @@ static int p5glove_best_leds(P5Glove p5,struct p5glove_data *info,int led[4],dou
 
 	/* Get the position from the 'best led' */
 	for (i = 0 ; i < 8; i++)
-		if (info->ir[i].visible)
-			led[info->ir[i].visible-1]=i;
+		if (p5->data.ir[i].visible)
+			led[p5->data.ir[i].visible-1]=i;
 
 	/* Hmm. No 'best' led. 
 	 */
 	if (led[0] < 0)
 		return -ENOENT;
-	p5glove_process_led(p5,info,led[0],pos[0]);
+	p5g_process_led(p5,led[0],pos[0]);
 
 	if (led[1] < 0)
 		return 1;
-	p5glove_process_led(p5,info,led[1],pos[1]);
+	p5g_process_led(p5,led[1],pos[1]);
 
 	if (led[2] < 0)
 		return 2;
 
-	p5glove_process_led(p5,info,led[2],pos[2]);
+	p5g_process_led(p5,led[2],pos[2]);
 
 	/* If we have more than 2, we need to verify the data */
 	if (led[3] < 0)
 		leds=3;	
 	else {
-		p5glove_process_led(p5,info,led[3],pos[3]);
+		p5g_process_led(p5,led[3],pos[3]);
 		leds=4;
 	}
 
@@ -356,7 +379,36 @@ static int p5glove_best_leds(P5Glove p5,struct p5glove_data *info,int led[4],dou
 	return leds;
 }
 
-int p5glove_process_sample(P5Glove p5, struct p5glove_data *info)
+/* Calculate delta, then store in 'prev'
+ */
+static int p5g_delta(P5Glove p5,int have_pos, int have_rot)
+{
+	int mask=0;
+	int i;
+
+	if (p5->prev.buttons != p5->data.buttons)
+		mask |= P5GLOVE_DELTA_BUTTONS;
+
+	for (i=0; i < 5; i++)
+		if (p5->prev.finger[i] != p5->data.finger[i]) {
+			mask |= P5GLOVE_DELTA_FINGERS;
+			break;
+		}
+
+	if (have_pos && (! memcmp(p5->data.position,p5->prev.position,sizeof(double)*3)))
+		have_pos=0;
+
+	if (have_rot && (! memcmp(&p5->data.rotation,&p5->prev.rotation,sizeof(p5->data.rotation))))
+		have_rot=0;
+
+	memcpy(&p5->prev,&p5->data,sizeof(p5->data));
+	return mask | 
+		(have_pos ? P5GLOVE_DELTA_POSITION : 0) |
+		(have_rot ? P5GLOVE_DELTA_ROTATION : 0);
+}
+
+
+static int p5g_process_sample(P5Glove p5)
 {
 	int i,j,leds;
 	int led[4] = {-1,-1,-1,-1};
@@ -369,16 +421,16 @@ int p5glove_process_sample(P5Glove p5, struct p5glove_data *info)
 	const double y_up[3]={0.0,1.0,0.0};
 
 	/* Get the best leds from the data */
-	leds=p5glove_best_leds(p5,info,led,pos);
+	leds=p5g_best_leds(p5,led,pos);
 	if (leds < 1)
-		return -ENOENT;
+		return p5g_delta(p5,0,0);
 
-	p5glove_process_led(p5,info,led[0],pos[0]);
+	p5g_process_led(p5,led[0],pos[0]);
 
 	/* Less than 3 leds. Can't calculate rotation info.
 	 */
 	if (leds < 3)
-		return;
+		return p5g_delta(p5,1,0);
 
 	/* Calculate reference normal of the leds */
 	p5glove_normal(p5->cal.led[led[0]],
@@ -390,35 +442,26 @@ int p5glove_process_sample(P5Glove p5, struct p5glove_data *info)
 
 	/* Calculate cos(theta) from the dot product of the ref and actual */
 	c=p5glove_dot(ref_normal,pos_normal);
-	info->rotation.angle=acos(c)*180.0/M_PI;
+	p5->data.rotation.angle=acos(c)*180.0/M_PI;
 	s=sin(acos(c));
 	t=1.0-c;
 
 	/* Calculate the rotation axis normal */
-	p5glove_normal(ref_normal,zero,pos_normal,info->rotation.axis);
+	p5glove_normal(ref_normal,zero,pos_normal,p5->data.rotation.axis);
 
 DPRINTF("Position: %d - %d - %d\n",led[0],led[1],led[2]);
 DPRINTF("Reference normal: [%.4lf, %.4lf, %.4lf]\n",ref_normal[0],ref_normal[1],ref_normal[2]);
 DPRINTF("Position  normal: [%.4lf, %.4lf, %.4lf]\n",pos_normal[0],pos_normal[1],pos_normal[2]);
 DPRINTF("Reference angle:   %.4lf\n",p5glove_dot(ref_normal,y_up)*180.0/M_PI);
 DPRINTF("Normal up angle:   %.4lf\n",p5glove_dot(pos_normal,y_up)*180.0/M_PI);
-DPRINTF("Rotation angle:      %.4lf\n",info->rotation.angle);
-DPRINTF("Rotation axis :   [%.4lf, %.4lf, %.4lf]\n",info->rotation.axis[0],info->rotation.axis[1],info->rotation.axis[2]);
-memcpy(info->normal,pos_normal,sizeof(pos_normal));
-memcpy(info->ref_normal,ref_normal,sizeof(ref_normal));
-memcpy(info->position,pos[0],sizeof(double)*3);
-memcpy(info->position_next,pos[1],sizeof(double)*3);
-memcpy(info->position_last,pos[2],sizeof(double)*3);
-info->position_led[0]=led[0];
-info->position_led[1]=led[1];
-info->position_led[2]=led[2];
-
-return;
+DPRINTF("Rotation angle:      %.4lf\n",p5->data.rotation.angle);
+DPRINTF("Rotation axis :   [%.4lf, %.4lf, %.4lf]\n",p5->data.rotation.axis[0],p5->data.rotation.axis[1],p5->data.rotation.axis[2]);
+return p5g_delta(p5,1,1);
 
 	/* Calculate transformation matrix, in column major order */
-	x=info->rotation.axis[0];
-	y=info->rotation.axis[1];
-	z=info->rotation.axis[2];
+	x=p5->data.rotation.axis[0];
+	y=p5->data.rotation.axis[1];
+	z=p5->data.rotation.axis[2];
 
 	/* Column 0 */
 	rot_matrix[0][0]=t*x*x+c;
@@ -449,15 +492,40 @@ return;
 
 	/* Then simply subtract the difference from the position to get the *real* point */
 	for (i=0; i<3; i++)
-		info->position[i] = pos[0][i]-pos[1][i];
+		p5->data.position[i] = pos[0][i]-pos[1][i];
 
 	/* There! The position is corrected, the rotation matrix is complete - we're done! */
+	return p5g_delta(p5,1,1);
 }
 
 #ifdef __linux__
 #define USB_TIMEOUT 1000
 
-int usb_get_report(struct usb_dev_handle *udev,int ReportId, unsigned char *raw_buf, int ReportSize )
+int usb_get_input(struct usb_dev_handle *udev,int ReportId, unsigned char *raw_buf, int ReportSize )
+{
+	int err;
+retry:
+	err=usb_control_msg(udev, 
+                         USB_ENDPOINT_IN + USB_TYPE_CLASS + USB_RECIP_INTERFACE,
+                         0x01, /* HID_REPORT_GET */
+                         ReportId+(0x02<<8), /* HID_REPORT_TYPE_INPUT */
+                         1, raw_buf, ReportSize, USB_TIMEOUT);
+	if (err == -EPIPE)
+		goto retry;
+	return err;
+}
+
+
+int usb_set_output(struct usb_dev_handle *udev,int ReportId, unsigned char *raw_buf, int ReportSize )
+{
+	return usb_control_msg(udev, 
+                         USB_ENDPOINT_OUT + USB_TYPE_CLASS + USB_RECIP_INTERFACE,
+                         0x09, /* HID_REPORT_SET = 0x09*/
+                         ReportId+(0x02<<8), /* HID_REPORT_TYPE_OUPUT */
+                         1, raw_buf, ReportSize, USB_TIMEOUT);
+}
+
+int usb_get_feature(struct usb_dev_handle *udev,int ReportId, unsigned char *raw_buf, int ReportSize )
 {
 	int err;
 retry:
@@ -465,20 +533,20 @@ retry:
                          USB_ENDPOINT_IN + USB_TYPE_CLASS + USB_RECIP_INTERFACE,
                          0x01, /* HID_REPORT_GET */
                          ReportId+(0x03<<8), /* HID_REPORT_TYPE_FEATURE */
-                         0, raw_buf, ReportSize, USB_TIMEOUT);
+                         1, raw_buf, ReportSize, USB_TIMEOUT);
 	if (err == -EPIPE)
 		goto retry;
 	return err;
 }
 
 
-int usb_set_report(struct usb_dev_handle *udev,int ReportId, unsigned char *raw_buf, int ReportSize )
+int usb_set_feature(struct usb_dev_handle *udev,int ReportId, unsigned char *raw_buf, int ReportSize )
 {
 	return usb_control_msg(udev, 
                          USB_ENDPOINT_OUT + USB_TYPE_CLASS + USB_RECIP_INTERFACE,
                          0x09, /* HID_REPORT_SET = 0x09*/
                          ReportId+(0x03<<8), /* HID_REPORT_TYPE_FEATURE */
-                         0, raw_buf, ReportSize, USB_TIMEOUT);
+                         1, raw_buf, ReportSize, USB_TIMEOUT);
 }
 #endif
 
@@ -542,13 +610,13 @@ static int p5glove_calibrate(struct p5glove *p5)
 	int err;
 
 	memset(&p5->cal,0,sizeof(p5->cal));
-	err=usb_get_report(p5->usb,12,report12_buff,sizeof(report12_buff));
+	err=usb_get_feature(p5->usb,12,report12_buff,sizeof(report12_buff));
 	if (err < 0) goto end;
 
 	err=p5glove_parse_report12(p5,report12_buff);
 	if (err < 0) goto end;
 
-	err=usb_get_report(p5->usb,6,report6_buff,sizeof(report6_buff));
+	err=usb_get_feature(p5->usb,6,report6_buff,sizeof(report6_buff));
 	if (err < 0) goto end;
 
 	err=p5glove_parse_report6(p5,report6_buff);
@@ -565,7 +633,9 @@ end:
 	return err;
 }
 
-P5Glove p5glove_open(void)
+/*********** Public API **************/
+
+P5Glove p5glove_open(int glove_number)
 {
 	struct p5glove *p5 = NULL;
 #if defined(__WIN32__) || defined(__MACOSX__)
@@ -599,7 +669,6 @@ P5Glove p5glove_open(void)
 			if (usb == NULL)
 				continue;
 
-			usb_resetep(usb, 0x81);
 			err=usb_claim_interface(usb,1);
 			if (err < 0) {
 				fprintf(stderr,"Can't claim P5 glove interface: %s\n",strerror(errno));
@@ -620,7 +689,13 @@ P5Glove p5glove_open(void)
 		p5->usb=usb;
 		err = p5glove_calibrate(p5);
 		if (err < 0) {
+			if (err == -EBUSY) {
+				fprintf(stderr,"libp5glove: Can't get feature reports.\n");
+				fprintf(stderr,"libp5glove: If you have the 'usbmouse' module loaded, please unload it.\n");
+			}
 			free(p5);
+			usb_release_interface(usb,1);
+			usb_close(usb);
 			return NULL;
 		}
 	}
@@ -630,23 +705,26 @@ P5Glove p5glove_open(void)
 
 void p5glove_close(P5Glove p5)
 {
-	if (p5->usb != NULL)
+	if (p5->usb != NULL) {
 #if defined(__WIN32__) || defined(__MACOSX__)
-        CloseUSBHID(p5->usb);
+		CloseUSBHID(p5->usb);
 #else
+		usb_release_interface(p5->usb,1);
 		usb_close(p5->usb);
 #endif
+	}
 	p5->usb=NULL;
 	free(p5);
 }
 
-int p5glove_sample(P5Glove p5, struct p5glove_data *info)
+int p5glove_sample(P5Glove p5,int timeout)
 {
 	int err;
+	uint8_t data[24];
 	
 #if defined(__WIN32__) || defined(__MACOSX__)
-    if( ReadUSBHID( p5->usb, p5->data, 24 ) == 24 ){
-        unpack_sample(p5, info);
+    if( ReadUSBHID( p5->usb, data, 24 ) == 24 ){
+        p5g_unpack_sample(p5, data);
         err = 0;
     }else{
         errno = EACCES;
@@ -654,24 +732,57 @@ int p5glove_sample(P5Glove p5, struct p5glove_data *info)
     }
 
 #else
-
-#ifdef HAVE_USB_INTERRUPT_READ
-	err=usb_interrupt_read(p5->usb, 0x81, p5->data, 24, 2000);
+#ifndef HAVE_USB_INTERRUPT_READ
+# define usb_read(usb,ep,data,len,tm)	usb_bulk_read(usb,ep,data,len,tm)
+# define usb_clear_halt(usb,ep) usb_resetep(usb,ep)
 #else
-	err=usb_bulk_read(p5->usb, 0x81, p5->data, 24, 2000);
+//# define usb_read(usb,ep,data,len,tm)	usb_get_input(usb,1,data,len)
+# define usb_read(usb,ep,data,len,tm)	usb_interrupt_read(usb,ep,data,len,tm)
 #endif
+retry:
+	err=usb_read(p5->usb, 0x81, data, 24, 1000);
 	if (err == 24) { 
-		unpack_sample(p5, info);
+		if (data[0] != 1) {
+printf("Damn. Report mangled. Restart your app.\n"); exit(0);
+			usb_read(p5->usb, 0x81, data, 1, timeout);
+			goto retry;
+		}
+		p5g_unpack_sample(p5, data);
+		err=p5g_process_sample(p5);
+	} else if (err < 0 && errno == EILSEQ)
 		err=0;
-	} else if (err < 0 && errno == 84)
-		err=0;
-	else if (err < 0 && errno == 19) {
+	else if (err < 0 && errno == ENODEV) {
 		fprintf(stderr,"Device reset. Crud.\n");
-		usb_resetep(p5->usb, 0x81);
+		usb_clear_halt(p5->usb, 0x81);
 	}
 #endif   
     
 	return err;
+}
+
+int p5glove_get_buttons(P5Glove p5,uint32_t *buttons)
+{
+	*buttons = p5->data.buttons;
+	return 0;
+}
+
+int p5glove_get_finger(P5Glove p5,int finger,double *clench)
+{
+	*clench = p5->data.finger[finger]/63.0;
+	return 0;
+}
+
+int p5glove_get_position(P5Glove p5,double pos[3])
+{
+	memcpy(pos,p5->data.position,sizeof(double)*3);
+	return 0;
+}
+
+int p5glove_get_rotation(P5Glove p5,double *angle,double axis[3])
+{
+	memcpy(axis,p5->data.rotation.axis,sizeof(double)*3);
+	*angle = p5->data.rotation.angle;
+	return 0;
 }
 
 void p5glove_begin_calibration(P5Glove p5)

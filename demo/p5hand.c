@@ -152,7 +152,6 @@ void render_world(void)
 }
 
 static P5Glove glove=NULL;
-static struct p5glove_data info;
 
 static GLfloat ambient_ir[4]={0.0, 0.2, 0.2, 1.0};
 static GLfloat diffuse_ir[4]={0.0, 0.8, 0.8, 1.0};
@@ -177,11 +176,12 @@ void render_hand(void)
 		diffuse_ir[0]=0.8;
 		diffuse_ir[1]=0.8;
 		diffuse_ir[2]=0.8;
-
+#if 0
 		if (info.ir[i].visible > 0) {
 			size *= 1.0+(5.0-info.ir[i].visible)/5.0;
 			diffuse_ir[0]=0.0;
 		}
+#endif
 
 		glMaterialfv(mode,GL_DIFFUSE,diffuse_ir);
 
@@ -216,22 +216,20 @@ void render_objs(void)
 {
 	int i,j;
 	int mode=GL_FRONT;
-	double pos[3];
+	double pos[3],angle;
 
 	glMaterialfv(mode,GL_AMBIENT,ambient_ir);
 
 	glPushMatrix();
 
 	if (d_position) {
-		memcpy(pos,info.position,sizeof(double)*3);
+		p5glove_get_position(glove, pos);
 		glTranslated(pos[0]*WORLD_SCALE,pos[1]*WORLD_SCALE,pos[2]*WORLD_SCALE);
 	}
 
 	if (d_rotation) {
-		glRotated(info.rotation.angle,
-			info.rotation.axis[0],
-			info.rotation.axis[1],
-			info.rotation.axis[2]);
+		p5glove_get_rotation(glove,&angle,pos);
+		glRotated(angle, pos[0], pos[1], pos[2]);
 	}
 
 	if (d_ref_axes)
@@ -272,13 +270,9 @@ void render_next(void)
 	int err;
 
 	/* Get samples here */
-	err=p5glove_sample(glove, &info);
+	err=p5glove_sample(glove, 100);
 
-	if (err == 0) {
-		p5glove_process_sample(glove, &info); 
-
-		glutPostRedisplay();
-	}
+	glutPostRedisplay();
 }
 
 
@@ -344,9 +338,7 @@ int main(int argc,char **argv)
 
 	render_init();
 
-	memset(&info,0,sizeof(info));
-
-	glove=p5glove_open();
+	glove=p5glove_open(1);
 	if (glove==NULL) {
 		perror(argv[0]);
 		exit(1);
