@@ -1,0 +1,335 @@
+what we know:
+
+feature reports:
+report id           size (inc report id)                  description
+    0                                                       (report id 0 not legal)
+    1               2                                       toggle bend sensor calibration mode : [ 1 mode ] , mode: 1 = calibrating, 0 = not calibrating
+    2               4                                       bend mouse click sensitivity : [ 2 left right middle ]
+    3                                                       (not observed)
+    4                                                       (not observed)
+    5               5                                       mouse mode : [ 5 mode ] , mode: ff = off, 1 = on
+    6               6                                       unknown, read during initialization
+    7               8                                       unknown, written 3 times and read 3 times during initialization, different values each time
+    8               8                                       unknown, written 3 times during initialization, different values each time
+    9               3                                       firmware rev : [ 9 major minor ]
+    a               2                                       mouse stick time : [ 2 time ] , time ranges from 0 to 20
+    b               4                                       bend sensor to mouse button mapping: [ b left right middle ]
+    c               62                                      unknown, read during initialization
+    d                                                       (not observed)
+    e                                                       (not observed)
+    f                                                       (not observed)
+
+
+
+
+-> P5_Init
+>>   DeviceIoControl 6028 ioctl:0xB01A8 (IOCTL_HID_GET_COLLECTION_INFORMATION) 0 0 1244620 12 3 0
+  output buffer dump:[ ee 38 32 0 b4 54 15 0 0 0 0 c0]
+<< 1 DeviceIoControl 6028 ioctl:0xB01A8 (IOCTL_HID_GET_COLLECTION_INFORMATION) 0 0 1244620 12 12 0
+  output buffer dump:[ 5c 8 0 0 0 42 7f d 0 1 0 4]
+
+  5c 8 0 0  ; descriptor size (size in bytes of preparsed data)
+  0         ; polled
+  42        ; reserved
+  7f d      ; vendor id
+  0 1       ; product id
+  0 4       ; version
+
+>>   DeviceIoControl 6028 ioctl:0xB0193 (IOCTL_HID_GET_COLLECTION_DESCRIPTOR) 0 0 1398072 2140 12 0
+  output buffer dump:[ 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+<< 1 DeviceIoControl 6028 ioctl:0xB0193 (IOCTL_HID_GET_COLLECTION_DESCRIPTOR) 0 0 1398072 2140 2140 0
+  output buffer dump:[ 48 69 64 50 20 4b 44 52 1 0 8c 0 0 0 0 0 0 0 3 0 3 0 18 0 3 0 0 0 3 0 0 0 3 0 10 0 13 0 b3 0 b8 7 1 0 8c 0 1 0 8 0 17 0 1 0 b8 0 82 0 0 0 18 0 0 0 8c 0 1 0 8 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 3 0 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ff 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 8c 0 3 0 8 0 17 0 1 0 b8 0 82 0 0 0 18 0 0 0 8c 0 1 0 8 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4 0 4 0 0 0 0 0 0 0 0 0 1 0 1 0 0 0 0 0 0 0 0 0 ff 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 8c 0 8 0 8 0 17 0 1 0 b8 0 82 0 0 0 18 0 0 0 8c 0 1 0 8 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 8 0 8 0 0 0 0 0 0 0 0 0 2 0 2 0 0 0 0 0 0 0 0 0 ff 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 8c 0 1 0 8 0 1 0 1 0 8 0 82 0 0 0 2 0 0 0 8c 0 1 0 8 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 4 0 4 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 ff ff ff ff 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 8c 0 2 0 8 0 3 0 1 0 18 0 82 0 0 0 4 0 
+
+  (preparsed data is internal to the hid class driver, not documented in msdn)
+
+
+>>   DeviceIoControl 6028 ioctl:0xB01A8 (IOCTL_HID_GET_COLLECTION_INFORMATION) 0 0 1244624 12 6028 0
+  output buffer dump:[ 0 42 7f d 0 1 0 4 5c 8 0 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB01A8 (IOCTL_HID_GET_COLLECTION_INFORMATION) 0 0 1244624 12 12 0
+  output buffer dump:[ 5c 8 0 0 0 42 7f d 0 1 0 4]
+
+  5c 8 0 0  ; descriptor size (size in bytes of preparsed data)
+  0         ; polled
+  42        ; reserved
+  7f d      ; vendor id
+  0 1       ; product id
+  0 4       ; version
+
+
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244544 8 0 0 8 0
+  input buffer dump:[ 8 0 8b 6b 2f cd ed 5f]
+
+  (HID feature 8: unknown)
+
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244544 8 0 0 8 0
+  input buffer dump:[ 8 1 28 6e 24 c9 2b 4a]
+
+  (HID feature 8: unknown)
+
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244544 8 0 0 8 0
+  input buffer dump:[ 8 2 83 ba e1 f7 2b 4a]
+
+  (HID feature 8: unknown)
+
+
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244548 8 0 0 8 0
+  input buffer dump:[ 7 0 67 99 6a d6 ca 4f]
+
+  (HID feature 7: unknown)
+
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244548 8 0 0 8 0
+  input buffer dump:[ 7 1 10 fc 18 bb c6 a0]
+
+  (HID feature 7: unknown)
+
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244548 8 0 0 8 0
+  input buffer dump:[ 7 2 f5 8c b0 1 c6 a0]
+
+  (HID feature 7: unknown)
+  
+
+  output buffer dump:[ 7 0 0 0 0 0 0 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1244660 8 8 0
+  output buffer dump:[ 7 0 d9 c5 1f f5 7f 13]
+
+  (HID feature 7: unknown)
+
+  output buffer dump:[ 7 0 0 0 0 0 0 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1244660 8 8 0
+  output buffer dump:[ 7 1 88 3b ff 7c 49 b4]
+
+  (HID feature 7: unknown)
+
+  output buffer dump:[ 7 0 0 0 0 0 0 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1244660 8 8 0
+  output buffer dump:[ 7 2 f5 96 84 25 29 be]
+
+  (HID feature 7: unknown)
+
+  
+>>   DeviceIoControl 6028 ioctl:0xB01BE (IOCTL_HID_GET_PRODUCT_STRING) 0 0 1244792 4 4 0
+  output buffer dump:[ 0 e0 fd 7f]
+<< 0 DeviceIoControl 6028 ioctl:0xB01BE (IOCTL_HID_GET_PRODUCT_STRING) 0 0 1244792 4 4 0
+  output buffer dump:[ 0 e0 fd 7f]
+
+  (get product string returned 0, error)
+  
+
+>>   DeviceIoControl 6028 ioctl:0xB01C2 (IOCTL_HID_GET_SERIALNUMBER_STRING) 0 0 1244792 4 4 0
+  output buffer dump:[ 0 e0 fd 7f]
+<< 1 DeviceIoControl 6028 ioctl:0xB01C2 (IOCTL_HID_GET_SERIALNUMBER_STRING) 0 0 1244792 4 0 0
+  output buffer dump:[]
+
+  (get serial number string returned 1, but an empty string)
+
+>>   DeviceIoControl 6028 ioctl:0xB01BA (IOCTL_HID_GET_MANUFACTURER_STRING) 0 0 1244792 4 4 0
+  output buffer dump:[ 9 4 0 0]
+<< 0 DeviceIoControl 6028 ioctl:0xB01BA (IOCTL_HID_GET_MANUFACTURER_STRING) 0 0 1244792 4 4 0
+  output buffer dump:[ 9 4 0 0]
+
+  (get manufacturer string returned 0, error)
+  
+  output buffer dump:[ 9 0 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1244756 3 3 0
+  output buffer dump:[ 9 4 3]
+
+  HID feature 9: get firmware revision (?)
+  4     ; firmware rev. major
+  3     ; firmware rev. minor
+
+  output buffer dump:[ 6 0 0 0 0 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1244752 6 6 0
+  output buffer dump:[ 6 ed ed b3 1d 4f]
+
+  HID feature 6: unknown
+
+
+  output buffer dump:[ c 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1244696 62 62 0
+  output buffer dump:[ c 0 ff 1 0 c 0 ad ff d ff e5 ff e4 ff 50 0 1e ff cf ff dc 0 66 ff f6 0 a9 ff ef ff a5 0 cc 0 3 0 d6 fe ea ff c1 0 9b 0 c6 ff b8 0 d9 0 0 0 0 0 0 0 0 0 0 0 0]
+
+  HID feature c: unknown
+  
+
+<- P5_Init
+
+
+VendorID: 0xd7f
+ProductID: 0x100
+Version: 0x400
+ProductString: Unknown
+ManufacturerString:
+SerialNumString: Unknown
+m_nDeviceID: 0
+m_nMajorRevisionNumber: 4
+m_nMinorRevisionNumber: 3
+m_nGloveType: 0
+
+
+-> P5_GetMouseState()
+  output buffer dump:[ 5 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1245040 2 2 0
+  output buffer dump:[ 5 ff]
+
+  HID feature 5: mouse mode
+  ff    ; mouse mode is off  (ff = off, 1 = on)
+
+<- P5_GetMouseState()
+
+
+-> P5_SetMouseState(0)
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244940 2 0 0 2 0
+  input buffer dump:[ 5 ff]
+
+  HID feature 5: mouse mode
+  ff    ; mouse mode is off  (ff = off, 1 = on)
+  
+<- P5_SetMouseState(0)
+
+
+-> P5_SetMouseState(1)
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244940 2 0 0 2 0
+  input buffer dump:[ 5 1]
+
+  HID feature 5: mouse mode
+  1    ; mouse mode is on  (ff = off, 1 = on)
+
+<- P5_SetMouseState(1)
+
+
+-> P5_SetMouseState(1)
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244940 2 0 0 2 0
+  input buffer dump:[ 5 1]
+
+  HID feature 5: mouse mode
+  1    ; mouse mode is on  (ff = off, 1 = on)
+
+<- P5_SetMouseState(1)
+
+
+-> P5_GetMouseState()
+  output buffer dump:[ 5 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1245040 2 2 0
+  output buffer dump:[ 5 1]
+
+  HID feature 5: mouse mode
+  1    ; mouse mode is on  (ff = off, 1 = on)
+
+<- P5_GetMouseState()
+
+
+-> P5_SetMouseState(0)
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244940 2 0 0 2 0
+  input buffer dump:[ 5 ff]
+
+  HID feature 5: mouse mode
+  ff    ; mouse mode is off  (ff = off, 1 = on)
+  
+<- P5_SetMouseState(0)
+
+
+-> P5_SetMouseStickTime(5)
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244944 2 0 0 2 0
+  input buffer dump:[ a 5]
+
+  HID feature a: mouse stick time (0 - 20)
+  5    ; stick time
+
+<- P5_SetMouseStickTime(5)
+
+
+-> P5_GetMouseStickTime(0)
+  output buffer dump:[ a 0 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1245028 3 2 0
+  output buffer dump:[ a 5]
+
+  HID feature a: mouse stick time (0 - 20)
+  5    ; stick time
+  
+<- P5_GetMouseStickTime(0)
+
+
+-> P5_SaveBendSensors()
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244952 2 0 0 2 0
+  input buffer dump:[ 1 0]
+
+  HID feature 1: toggle calibration mode
+  0    ; not in bend sensor callibration mode
+
+<- P5_SaveBendSensors()
+
+
+-> P5_CalibrateBendSensors()
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244952 2 0 0 2 0
+  input buffer dump:[ 1 1]
+
+  HID feature 1: toggle calibration mode
+  1    ; in bend sensor callibration mode
+  
+<- P5_CalibrateBendSensors()
+
+-> P5_SaveBendSensors()
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244952 2 0 0 2 0
+  input buffer dump:[ 1 0]
+
+  HID feature 1: toggle calibration mode
+  0    ; not in bend sensor callibration mode
+  
+<- P5_SaveBendSensors()
+
+
+-> P5_CalibratePositionData()
+<- P5_CalibratePositionData()
+
+
+-> P5_GetMouseButtonAllocation()
+  output buffer dump:[ b 0 0 0 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1245004 5 4 0
+  output buffer dump:[ b 0 2 1]
+
+  HID feature b: bend finger / mouse button assignments
+  0     ; left click
+  2     ; right click
+  1     ; middle click
+
+<- (0,2,1) P5_GetMouseButtonAllocation()
+
+
+-> P5_SetMouseButtonAllocation(1,2,0)
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244928 4 0 0 4 0
+  input buffer dump:[ b 1 2 0]
+
+  HID feature b: bend finger / mouse button assignments
+  0     ; left click
+  2     ; right click
+  1     ; middle click
+  
+<- P5_SetMouseButtonAllocation(1,2,0)
+
+
+-> P5_GetClickSensitivity()
+  output buffer dump:[ 2 0 0 0]
+<< 1 DeviceIoControl 6028 ioctl:0xB0192 (IOCTL_HID_GET_FEATURE) 0 0 1245004 4 4 0
+  output buffer dump:[ 2 0 0 53]
+
+  HID feature 2: mouse click sensitivity
+  0     ; left value
+  2     ; right value
+  1     ; middle value
+  
+<- (0,0,53) P5_GetClickSensitivity()
+
+
+-> P5_SetClickSensitivity(53,0,0)
+>>   DeviceIoControl 6028 ioctl:0xB0191 (IOCTL_HID_SET_FEATURE) 1244928 4 0 0 4 0
+  input buffer dump:[ 2 53 0 0]
+
+HID feature 2: mouse click sensitivity
+  0     ; left value
+  2     ; right value
+  1     ; middle value
+
+<- P5_SetClickSensitivity(53,0,0)
+
+
+there are 1 gloves currently connected to the computer.
