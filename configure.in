@@ -20,10 +20,9 @@ AC_PATH_X
 AC_PATH_XTRA
 
 dnl Check for GL libs
-MDL_HAVE_OPENGL
-if test "${have_glut}" != "yes"; then
-	AC_MSG_ERROR([Can't find the -lglut library.])
-fi
+AC_CHECK_LIB(GL, glAccum)
+AC_CHECK_LIB(GLU, gluSphere)
+AC_CHECK_LIB(glut, glutInit)
 
 dnl Replace `main' with a function in -lusb:
 AC_CHECK_LIB(usb, usb_open)
