@@ -304,7 +304,7 @@ static int p5g_best_leds(P5Glove p5,int led[4],double pos[4][3])
 			double err = fabs(dist-ref_dist)/ref_dist;
 
 			DPRINTF("%d - %d: %.4lf ",led[i],led[j],ref_dist);
-			DPRINTF("(%.4lf) [%.4lf]\n",led[i],led[j],dist,err);
+			DPRINTF("(%.4lf) [%.4lf]\n",dist,err);
 
 			/* Max 9% error margin on distance */
 			if (err > 0.20) {
