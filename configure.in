@@ -3,10 +3,7 @@ AC_INIT
 AM_INIT_AUTOMAKE(libp5glove,0.3)
 AM_CONFIG_HEADER(config.h)
 
-dnl Always pull in the macros/ directory in aclocal
-ACLOCAL="$ACLOCAL -I macros"
-AC_SUBST(ACLOCAL)
-
+AC_CONFIG_MACRO_DIR([m4])
 
 dnl Checks for programs.
 AC_PROG_CC
