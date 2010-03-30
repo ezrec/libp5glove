@@ -1,5 +1,5 @@
 /*
-    Copyright (c) 2004 Jason McMullan <ezrec@hotmail.com>
+    Copyright (c) 2004-2010 Jason McMullan <jason.mcmullan@gmail.com>
 
      USB/HID I/O routines
 */

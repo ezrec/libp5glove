@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- *  Copyright (c) 2003 Jason McMullan <ezrec@hotmail.com>
+ *  Copyright (c) 2003-2010 Jason McMullan <jason.mcmullan@gmail.com>
  *  Windows patch (c) 2004 Ross Bencina <rossb@audiomulch.com>
  *  MacOSX patch (c) 2004 Tim Kreger <tkreger@bigpond.net.au>
  *

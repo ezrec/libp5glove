@@ -1,7 +1,7 @@
 /*
  * $Id$
  *
- *  Copyright (c) 2003 Jason McMullan <ezrec@hotmail.com>
+ *  Copyright (c) 2003-2010 Jason McMullan <jason.mcmullan@gmail.com>
  *
  *  USB P5 Data Glove support
  */
