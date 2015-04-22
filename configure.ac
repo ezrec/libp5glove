@@ -1,13 +1,13 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT
-AM_INIT_AUTOMAKE(libp5glove,0.3)
+AC_INIT([libp5glove],[0.3])
+AM_INIT_AUTOMAKE
 AM_CONFIG_HEADER(config.h)
 
 AC_CONFIG_MACRO_DIR([m4])
 
 dnl Checks for programs.
 AC_PROG_CC
-AM_PROG_LIBTOOL
+LT_INIT
 AC_PROG_INSTALL
 
 dnl Checks for libraries.
@@ -37,8 +37,9 @@ dnl Checks for library functions.
 AC_HEADER_STDC
 AC_CHECK_FUNCS(gettimeofday strerror)
 
-AC_OUTPUT([
+AC_CONFIG_FILES([
 	Makefile
 	src/Makefile
 	demo/Makefile
 ])
+AC_OUTPUT
